@@ -1,0 +1,57 @@
+# REFERENCE ONLY — do not execute this file directly.
+# Copy to /etc/systemd/system/gunicorn-climate.service on the server.
+# Replace all /path/to/ placeholders with your actual project path.
+# After copying: sudo systemctl daemon-reload
+#                sudo systemctl enable gunicorn-climate
+#                sudo systemctl start gunicorn-climate
+
+[Unit]
+# Human-readable description shown in systemctl status
+Description=Gunicorn instance for Climate RAG API
+
+# Start only after network and Redis are available
+After=network.target redis.service
+
+# If Redis is running on this machine, also declare a dependency
+Wants=redis.service
+
+
+[Service]
+# Run as this user — never run as root
+User=gylab204
+Group=gylab204
+
+# The project root — all relative paths in gunicorn.conf.py resolve from here
+WorkingDirectory=/path/to/Climate-Chatbot
+
+# Load environment variables from .env file
+EnvironmentFile=/path/to/Climate-Chatbot/.env
+
+# The command systemd runs to start the service
+# Uses the venv's gunicorn directly (no need for uv run in production)
+ExecStart=/path/to/Climate-Chatbot/.venv/bin/gunicorn \
+    "app:create_app()" \
+    --config /path/to/Climate-Chatbot/gunicorn.conf.py \
+    --env FLASK_ENV=production
+
+# What to do on exit
+# on-failure = restart only if process exits with non-zero code
+# always = restart no matter what (use for critical services)
+Restart=on-failure
+RestartSec=5s
+
+# How long to wait for graceful shutdown before force-killing
+TimeoutStopSec=30s
+
+# Log identifier — shows in journalctl as "gunicorn-climate"
+SyslogIdentifier=gunicorn-climate
+
+# Environment hardening — prevents the process from
+# writing to most of the filesystem (optional but good practice)
+# ProtectSystem=full
+# PrivateTmp=true
+
+
+[Install]
+# This service should start when the server reaches normal multi-user mode
+WantedBy=multi-user.target

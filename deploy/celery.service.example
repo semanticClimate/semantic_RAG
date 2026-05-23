@@ -1,0 +1,52 @@
+# REFERENCE ONLY — do not execute this file directly.
+# Copy to /etc/systemd/system/celery-climate.service on the server.
+# Replace all /path/to/ placeholders with your actual project path.
+# After copying: sudo systemctl daemon-reload
+#                sudo systemctl enable celery-climate
+#                sudo systemctl start celery-climate
+
+[Unit]
+Description=Celery workers for Climate RAG API
+
+# Celery needs Redis (broker) and should start after Gunicorn
+# so the app module is already importable
+After=network.target redis.service gunicorn-climate.service
+Wants=redis.service
+
+
+[Service]
+User=gylab204
+Group=gylab204
+
+WorkingDirectory=/path/to/Climate-Chatbot
+
+EnvironmentFile=/path/to/Climate-Chatbot/.env
+
+# Start 2 Celery workers
+# -A app.tasks     = the Celery app to load
+# worker           = run as a worker
+# --concurrency=2  = 2 parallel worker processes
+# --loglevel=info  = log level
+# -n worker1@%h    = name this worker (useful when running multiple)
+ExecStart=/path/to/Climate-Chatbot/.venv/bin/celery \
+    -A app.tasks worker \
+    --concurrency=2 \
+    --loglevel=info \
+    -n climate-worker@%h
+
+# Graceful shutdown — send SIGTERM and wait for tasks to finish
+KillSignal=SIGTERM
+StopWaitsForSubprocesses=true
+
+Restart=on-failure
+RestartSec=10s
+
+# Give workers more time to finish in-flight LLM tasks before force-kill
+# Ollama can take up to 120s so set this above that
+TimeoutStopSec=150s
+
+SyslogIdentifier=celery-climate
+
+
+[Install]
+WantedBy=multi-user.target
