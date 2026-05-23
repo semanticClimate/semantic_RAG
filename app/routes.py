@@ -11,11 +11,11 @@ bp = Blueprint("api", __name__)
 MAX_MESSAGE_LENGTH = 2000
 
 
-@bp.route('/')
+@bp.route("/")
 def index():
     # serves index.html from the project root (one level above app/)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return send_from_directory(project_root, 'index.html')
+    return send_from_directory(project_root, "index.html")
 
 @bp.route("/health", methods=["GET"])
 def health():
