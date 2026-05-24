@@ -25,8 +25,8 @@ ssh gylab204@your-server-ip
 
 # Clone into home directory
 cd ~
-git clone https://github.com/your-org/climate-rag-backend.git Climate-Chatbot
-cd Climate-Chatbot
+git clone https://github.com/semanticClimate/semantic_RAG.git
+cd semantic_RAG
 ```
 
 ---
@@ -68,6 +68,12 @@ redis-cli ping   # must return PONG
 
 ## Step 5 — Configure Environment
 
+Generate a secure SECRET_KEY:
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+
 ```bash
 cp .env.example .env
 nano .env
@@ -94,11 +100,6 @@ TOP_K=5
 DISTANCE_THRESHOLD=0.7
 SESSION_TTL_SECONDS=86400
 LOG_LEVEL=INFO
-```
-
-Generate a secure SECRET_KEY:
-```bash
-python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 Restrict .env file permissions:
@@ -146,8 +147,8 @@ kill %1
 ## Step 8 — Set Up Log Directory
 
 ```bash
-sudo mkdir -p /var/log/climate-rag
-sudo chown $USER:$USER /var/log/climate-rag
+sudo mkdir -p /var/log/semantic_RAG
+sudo chown $USER:$USER /var/log/semantic_RAG
 ```
 
 ---
@@ -198,17 +199,17 @@ sudo apt install certbot python3-certbot-nginx -y
 ## Step 12 — Configure Nginx
 
 ```bash
-sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/climate-rag
-sudo nano /etc/nginx/sites-available/climate-rag
+sudo cp deploy/nginx.conf.example /etc/nginx/sites-available/semantic_RAG
+sudo nano /etc/nginx/sites-available/semantic_RAG
 ```
 
 Make these edits in the file:
 - Replace `api.yourorg.com` with your actual domain name (appears 3 times)
-- Replace `/path/to/Climate-Chatbot/frontend/` in the `/app` location block with your actual frontend path
+- Replace `/path/to/semantic_RAG/static/` in the `/app` location block with your actual frontend path
 
 Enable the site:
 ```bash
-sudo ln -s /etc/nginx/sites-available/climate-rag /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/semantic_RAG /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 # Expected: syntax is ok / test is successful
@@ -244,7 +245,7 @@ sudo nano /etc/systemd/system/gunicorn-climate.service
 ```
 
 Replace in the file:
-- `/path/to/Climate-Chatbot` → actual project path e.g. `/home/gylab204/Climate-Chatbot`
+- `/path/to/semantic_RAG` → actual project path e.g. `/home/gylab204/semantic_RAG`
 - `gylab204` in `User=` and `Group=` → your actual username
 
 ### Celery service
@@ -369,7 +370,7 @@ sudo tail -f /var/log/climate-rag/access.log  # HTTP access log
 ### Deploy code updates
 
 ```bash
-cd ~/Climate-Chatbot
+cd ~/semantic_RAG
 git pull origin main
 uv sync
 sudo systemctl restart gunicorn-climate

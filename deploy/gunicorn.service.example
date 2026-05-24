@@ -22,16 +22,16 @@ User=gylab204
 Group=gylab204
 
 # The project root — all relative paths in gunicorn.conf.py resolve from here
-WorkingDirectory=/path/to/Climate-Chatbot
+WorkingDirectory=/path/to/semantic_RAG
 
 # Load environment variables from .env file
-EnvironmentFile=/path/to/Climate-Chatbot/.env
+EnvironmentFile=/path/to/semantic_RAG/.env
 
 # The command systemd runs to start the service
 # Uses the venv's gunicorn directly (no need for uv run in production)
-ExecStart=/path/to/Climate-Chatbot/.venv/bin/gunicorn \
+ExecStart=/path/to/semantic_RAG/.venv/bin/gunicorn \
     "app:create_app()" \
-    --config /path/to/Climate-Chatbot/gunicorn.conf.py \
+    --config /path/to/semantic_RAG/gunicorn.conf.py \
     --env FLASK_ENV=production
 
 # What to do on exit

@@ -31,10 +31,10 @@ Internet
   Celery             async RAG pipeline execution
     │
   ┌─────────────────────────────────────────────┐
-  │  Redis       message broker + session store  │
-  │  ChromaDB    persistent vector database      │
-  │  MiniLM      local embedding model           │
-  │  Ollama      local LLM (Llama 3.1 8B / A100) │
+  │  Redis       message broker + session store │
+  │  ChromaDB    persistent vector database     │
+  │  MiniLM      local embedding model          │
+  │  Ollama      local LLM (Llama 3.1 8B / A100)│
   └─────────────────────────────────────────────┘
 ```
 
@@ -60,7 +60,7 @@ Internet
 ## Project Structure
 
 ```
-Climate-Chatbot/
+semantic_RAG/
 ├── app/
 │   ├── __init__.py        Flask app factory + global error handlers
 │   ├── routes.py          API endpoint definitions
@@ -135,8 +135,8 @@ curl http://localhost:5000/result/xyz-456
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/climate-rag-backend.git
-cd climate-rag-backend
+git clone https://github.com/semanticClimate/semantic_RAG.git
+cd semantic_RAG
 
 # 2. Install all dependencies
 uv sync

@@ -18,9 +18,9 @@ Wants=redis.service
 User=gylab204
 Group=gylab204
 
-WorkingDirectory=/path/to/Climate-Chatbot
+WorkingDirectory=/path/to/semantic_RAG
 
-EnvironmentFile=/path/to/Climate-Chatbot/.env
+EnvironmentFile=/path/to/semantic_RAG/.env
 
 # Start 2 Celery workers
 # -A app.tasks     = the Celery app to load
@@ -28,7 +28,7 @@ EnvironmentFile=/path/to/Climate-Chatbot/.env
 # --concurrency=2  = 2 parallel worker processes
 # --loglevel=info  = log level
 # -n worker1@%h    = name this worker (useful when running multiple)
-ExecStart=/path/to/Climate-Chatbot/.venv/bin/celery \
+ExecStart=/path/to/semantic_RAG/.venv/bin/celery \
     -A app.tasks worker \
     --concurrency=2 \
     --loglevel=info \

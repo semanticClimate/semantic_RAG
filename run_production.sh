@@ -5,7 +5,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Ensure log directory exists
-mkdir -p /var/log/climate-rag
+mkdir -p /var/log/semantic_RAG
 
 # Activate the virtual environment relative to project root
 source "$SCRIPT_DIR/.venv/bin/activate"
