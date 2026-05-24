@@ -1,68 +1,123 @@
 # REFERENCE ONLY — do not execute this file directly.
-# Copy to /etc/nginx/sites-available/climate-rag on the server
-# and update server_name and alias paths before use.
+# Copy to /etc/nginx/sites-available/climate-rag on the server.
+# Before use, replace the two placeholders below:
+#
+#   Placeholder                          Replace with
+#   ─────────────────────────────────    ──────────────────────────────────────────
+#   api.yourorg.com                      your actual domain or server IP
+#   /path/to/semantic_RAG/static/        absolute path to static/ folder on server
+#                                        e.g. /home/gylab204/semantic_RAG/static/
+#
+# After copying and editing:
+#   sudo nginx -t                        ← test config syntax first
+#   sudo systemctl reload nginx          ← apply if test passes
+#   sudo certbot --nginx -d your.domain  ← get SSL cert (fills in ssl lines)
 
-# /etc/nginx/sites-available/climate-rag
-
-# Rate limiting — max 20 requests per minute per IP
-
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+# Tracks per-IP request rate in a 10MB shared memory zone
+# Rate: max 20 requests per minute per IP address
 limit_req_zone $binary_remote_addr zone=api_limit:10m rate=20r/m;
 
-#   Placeholder                             |   Replace_with 
-#   api.yourorg.com                         |   your actual domain or server IP
-#   /path/to/Climate-Chatbot/               |   absolute path to where index.html lives on the servers
-
+# ── HTTP → HTTPS redirect ─────────────────────────────────────────────────────
 server {
     listen 80;
     server_name api.yourorg.com;
 
-    # Redirect all HTTP to HTTPS
+    # Redirect every HTTP request to HTTPS permanently
     return 301 https://$host$request_uri;
 }
 
+# ── Main HTTPS server ─────────────────────────────────────────────────────────
 server {
     listen 443 ssl;
     server_name api.yourorg.com;
 
-    # SSL — filled in by Certbot automatically
+    # ── SSL certificates ──────────────────────────────────────────────────────
+    # These three lines are filled in automatically by Certbot.
+    # Do not edit manually — run: sudo certbot --nginx -d api.yourorg.com
     ssl_certificate     /etc/letsencrypt/live/api.yourorg.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/api.yourorg.com/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
-    # Security headers
-    add_header X-Frame-Options        "DENY"            always;
-    add_header X-Content-Type-Options "nosniff"         always;
-    add_header X-XSS-Protection       "1; mode=block"   always;
+    # ── Security headers ──────────────────────────────────────────────────────
+    add_header X-Frame-Options        "DENY"          always;
+    add_header X-Content-Type-Options "nosniff"       always;
+    add_header X-XSS-Protection       "1; mode=block" always;
 
-    # Apply rate limiting
+    # ── Rate limiting ─────────────────────────────────────────────────────────
+    # burst=10 allows short spikes above the rate limit
+    # nodelay processes burst requests immediately rather than queuing them
     limit_req zone=api_limit burst=10 nodelay;
     limit_req_status 429;
 
-    # Max request body size — prevents oversized payloads
+    # ── Max request body ──────────────────────────────────────────────────────
+    # Prevents oversized payloads reaching Flask
     client_max_body_size 1m;
 
-    # Proxy all requests to Gunicorn via Unix socket
+    # ── Frontend — served directly by Nginx from static/ folder ──────────────
+    # Nginx serves index.html directly without touching Flask.
+    # Update the alias path to match where static/ lives on your server.
     location / {
+        alias /path/to/semantic_RAG/static/;
+        index index.html;
+
+        # try_files: serve the file if it exists, otherwise serve index.html
+        # This allows the frontend to handle its own client-side routing
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ── API — proxied to Gunicorn via Unix socket ─────────────────────────────
+    # All API endpoint requests are forwarded to the Flask application.
+    # Each location block corresponds to one Flask blueprint route.
+
+    location /health {
         proxy_pass         http://unix:/tmp/climate-rag.sock;
         proxy_http_version 1.1;
-
-        # Pass real client info to Flask
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_connect_timeout  10s;
+        proxy_send_timeout     30s;
+        proxy_read_timeout     30s;
+    }
 
-        # Timeouts — must be longer than Ollama generation time
+    location /session {
+        proxy_pass         http://unix:/tmp/climate-rag.sock;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_connect_timeout  10s;
+        proxy_send_timeout     30s;
+        proxy_read_timeout     30s;
+    }
+
+    location /chat {
+        proxy_pass         http://unix:/tmp/climate-rag.sock;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        # /chat only dispatches a task — response is fast
+        proxy_connect_timeout  10s;
+        proxy_send_timeout     30s;
+        proxy_read_timeout     30s;
+    }
+
+    location /result {
+        proxy_pass         http://unix:/tmp/climate-rag.sock;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        # /result is polled while Ollama generates — needs longer timeout
         proxy_connect_timeout  10s;
         proxy_send_timeout     120s;
         proxy_read_timeout     120s;
-    }
-
-    # Serve the frontend HTML directly from Nginx
-    location /app {
-        alias /path/to/Climate-Chatbot/frontend/;
-        index index.html;
-        try_files $uri $uri/ /app/index.html;
     }
 }
