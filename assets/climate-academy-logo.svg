@@ -1,0 +1,21 @@
+<svg width="900" height="300" viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Climate Academy">
+  <rect width="900" height="300" fill="#ffffff"/>
+
+  <g fill="#000000" font-family="Arial Black, Helvetica, sans-serif" font-weight="900" letter-spacing="1.5">
+    <text x="34" y="122" font-size="104">CLIMAT</text>
+    <text x="34" y="244" font-size="104">ACAD</text>
+    <text x="530" y="244" font-size="104">MY</text>
+  </g>
+
+  <g>
+    <rect x="616" y="44" width="122" height="18" fill="#c8282e"/>
+    <rect x="616" y="77" width="122" height="18" fill="#dd7d5e"/>
+    <rect x="616" y="110" width="122" height="18" fill="#e8c9a8"/>
+  </g>
+
+  <g>
+    <rect x="421" y="157" width="108" height="18" fill="#7bacc8"/>
+    <rect x="421" y="190" width="108" height="18" fill="#2e6f9f"/>
+    <rect x="421" y="223" width="108" height="18" fill="#1a446d"/>
+  </g>
+</svg>

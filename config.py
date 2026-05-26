@@ -14,6 +14,10 @@ class Config:
     # ChromaDB
     CHROMA_PATH        = os.getenv("CHROMA_PATH", "./chroma_db")
     CHROMA_COLLECTION  = os.getenv("CHROMA_COLLECTION", "climate_academy")
+    CHROMA_COLLECTION_CLIMATE_HTML = os.getenv(
+        "CHROMA_COLLECTION_CLIMATE_HTML",
+        "climate_encyclopedia"
+    )
 
     # Embedding
     EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
@@ -25,6 +29,16 @@ class Config:
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))
     CHUNK_OVERLAP      = int(os.getenv("CHUNK_OVERLAP", 30))
+
+    # Source HTMLs
+    CLIMATE_BOOK_HTML_PATH = os.getenv(
+        "CLIMATE_BOOK_HTML_PATH",
+        "input/climate_academy.html"
+    )
+    CLIMATE_ENCYCLOPEDIA_HTML_PATH = os.getenv(
+        "CLIMATE_ENCYCLOPEDIA_HTML_PATH",
+        r"D:\encylopedia\encyclopedia\climate.html"
+    )
 
     # Retrieval
     TOP_K              = int(os.getenv("TOP_K", 5))
