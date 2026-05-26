@@ -1,14 +1,21 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, app, request, jsonify, send_from_directory   # add send_from_directory
 from app.session import create_session, delete_session, session_exists
 from app.tasks import process_chat
 from app.logger import get_logger
+import os                                                                   # add this
 
 logger = get_logger(__name__)
 
 bp = Blueprint("api", __name__)
 
-MAX_MESSAGE_LENGTH = 2000  # characters
+MAX_MESSAGE_LENGTH = 2000
 
+
+@bp.route("/")
+def index():
+    # serves index.html from the project root (one level above app/)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return send_from_directory(project_root, "index.html")
 
 @bp.route("/health", methods=["GET"])
 def health():

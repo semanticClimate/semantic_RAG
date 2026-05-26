@@ -411,36 +411,6 @@
     position: relative; z-index: 5;
   }
 
-  /* Backend URL bar */
-  .backend-bar {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(13,27,42,0.7);
-    border: 1px solid var(--ca-border);
-    border-left: 3px solid var(--ca-steel);
-    border-radius: 5px; padding: 7px 13px;
-    margin-bottom: 11px;
-  }
-  .backend-bar label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem; color: var(--ca-muted);
-    letter-spacing: 0.08em; white-space: nowrap;
-    text-transform: uppercase;
-  }
-  .backend-bar input {
-    flex: 1; background: transparent; border: none;
-    color: var(--ca-steel); font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem; outline: none; letter-spacing: 0.04em;
-  }
-  .backend-bar input:focus { color: var(--ca-text); }
-  .connect-btn {
-    background: transparent; border: 1px solid var(--ca-border);
-    color: var(--ca-muted); border-radius: 4px;
-    padding: 3px 10px; font-size: 0.62rem;
-    font-family: 'IBM Plex Mono', monospace;
-    cursor: pointer; transition: all .2s;
-    letter-spacing: 0.06em; white-space: nowrap;
-  }
-  .connect-btn:hover { border-color: var(--ca-steel); color: var(--ca-steel); }
 
   .input-row {
     display: flex; gap: 10px; align-items: flex-end;
@@ -482,18 +452,104 @@
     text-align: center; letter-spacing: 0.06em;
   }
   .footer-hint .sep { color: var(--ca-red); margin: 0 4px; }
+
+  .logo-image-wrap {
+    width: 100%;
+    border: 1px solid var(--ca-border);
+    border-radius: 8px;
+    background: #f6f6f6;
+    padding: 8px;
+  }
+  .brand-logo {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+  }
+  .sidebar-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .mobile-only { display: none; }
+  #sidebarBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 12, 18, 0.58);
+    backdrop-filter: blur(2px);
+    z-index: 4;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  @media (max-width: 920px) {
+    #sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      transform: translateX(-102%);
+      transition: transform 0.28s ease;
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+    }
+    body.sidebar-open #sidebar {
+      transform: translateX(0);
+      box-shadow: 20px 0 40px rgba(0,0,0,0.35);
+    }
+    body.sidebar-open #sidebarBackdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .mobile-only {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--ca-border);
+      border-radius: 6px;
+      background: var(--ca-mid);
+      color: var(--ca-text);
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #topbar { padding: 0 12px; gap: 8px; }
+    #topbar-title { max-width: 180px; font-size: 0.9rem; }
+    #chat { padding: 18px 12px; gap: 14px; }
+    .msg { max-width: 100%; }
+    .bubble {
+      max-width: min(88vw, 620px);
+      font-size: 0.84rem;
+      line-height: 1.65;
+      padding: 10px 12px;
+    }
+    #footer { padding: 10px 10px 12px; }
+    .footer-hint { font-size: 0.54rem; letter-spacing: 0.03em; }
+  }
+
+  @media (max-width: 620px) {
+    .welcome { padding: 20px 8px; gap: 14px; }
+    .welcome h2 { font-size: 1.2rem; letter-spacing: 0.04em; }
+    .chips { gap: 6px; }
+    .chip { padding: 6px 9px; font-size: 0.72rem; }
+    .topbar-right { gap: 6px; }
+    .status-indicator { display: none; }
+  }
 </style>
 </head>
 <body>
+<div id="sidebarBackdrop" onclick="toggleSidebar(false)"></div>
 
 <!-- ════ SIDEBAR ════ -->
 <div id="sidebar">
   <div class="sidebar-header">
-    <div class="logo-mark">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="logo-image-wrap">
+      <img src="./assets/climate-academy-logo.svg" alt="Climate Academy logo" class="brand-logo">
     </div>
     <div class="logo-wordmark">
-      <div class="name">CLIMAT<span class="eq">≡</span>ACAD<span class="eq">≡</span>MY</div>
+      <div class="name">Climate Academy</div>
       <div class="sub">RAG Chatbot</div>
     </div>
   </div>
@@ -529,6 +585,7 @@
 <div id="main">
   <div id="topbar">
     <div class="topbar-left">
+      <button class="mobile-only" onclick="toggleSidebar()" aria-label="Toggle conversations">Menu</button>
       <div class="topbar-bars"><span></span><span></span><span></span></div>
       <div id="topbar-title">Climate Academy</div>
     </div>
@@ -544,9 +601,9 @@
   <div id="chat">
     <div class="welcome" id="welcome">
       <div class="welcome-logo">
-        <div class="welcome-bars"><span></span><span></span><span></span></div>
+        <img src="./assets/climate-academy-logo.svg" alt="Climate Academy logo" class="brand-logo" style="max-width: 360px;">
       </div>
-      <h2>CLIMAT<span class="eq">≡</span>ACAD<span class="eq">≡</span>MY<br>
+      <h2>Climate Academy<br>
         <span class="sub-accent" style="font-size:0.7em;letter-spacing:0.15em;font-weight:600;">CHATBOT</span>
       </h2>
       <p class="welcome-tagline">Climate education for system change. Ask anything grounded in the Climate Academy's in-depth science and social analysis.</p>
@@ -562,11 +619,6 @@
   </div>
 
   <div id="footer">
-    <div class="backend-bar">
-      <label>API</label>
-      <input type="text" id="backendInput" value="http://localhost:5000" placeholder="http://localhost:5000"/>
-      <button class="connect-btn" onclick="reconnect()">reconnect</button>
-    </div>
     <div class="input-row">
       <textarea id="input" placeholder="Ask anything about the Climate Academy book…" rows="1"
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -599,7 +651,7 @@ let isBusy        = false;    // true while a request is in-flight
 // ─────────────────────────────────────────────
 const uid  = () => 'c' + Date.now() + Math.random().toString(36).slice(2, 5);
 const esc  = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const base = ()  => document.getElementById('backendInput').value.replace(/\/$/, '');
+const base = () => window.location.origin.replace(/\/$/, '');
 
 function md(text) {
   return text
@@ -668,9 +720,19 @@ async function newChat() {
 }
 
 function getActive() { return chats.find(c => c.id === activeChatId) || null; }
+function toggleSidebar(forceOpen) {
+  const willOpen = typeof forceOpen === 'boolean'
+    ? forceOpen
+    : !document.body.classList.contains('sidebar-open');
+  document.body.classList.toggle('sidebar-open', willOpen);
+}
+function closeSidebarOnMobile() {
+  if (window.matchMedia('(max-width: 920px)').matches) toggleSidebar(false);
+}
 
 function switchToChat(id) {
   activeChatId = id;
+  closeSidebarOnMobile();
   renderSidebar();
   renderChatArea();
   const chat = getActive();
@@ -739,9 +801,9 @@ function renderChatArea() {
     chatEl.innerHTML = `
       <div class="welcome" id="welcome">
         <div class="welcome-logo">
-          <div class="welcome-bars"><span></span><span></span><span></span></div>
+          <img src="./assets/climate-academy-logo.svg" alt="Climate Academy logo" class="brand-logo" style="max-width: 360px;">
         </div>
-        <h2>CLIMAT<span class="eq">≡</span>ACAD<span class="eq">≡</span>MY<br>
+        <h2>Climate Academy<br>
           <span class="sub-accent" style="font-size:0.7em;letter-spacing:0.15em;font-weight:600;color:#7bacc8;">CHATBOT</span>
         </h2>
         <p class="welcome-tagline">${chat ? 'Ask your first question about the Climate Academy book.' : 'Select a chat from the sidebar or start a new conversation.'}</p>
@@ -876,6 +938,7 @@ async function sendMessage() {
 
   const chat = getActive();
   if (!chat) return;
+  closeSidebarOnMobile();
 
   const lang = document.getElementById('langSelect').value;
   chat.lang  = lang;
