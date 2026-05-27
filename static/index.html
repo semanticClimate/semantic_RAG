@@ -596,7 +596,7 @@
   <div id="footer">
     <div class="backend-bar">
       <label>API</label>
-      <input type="text" id="backendInput" value="http://localhost:5000" placeholder="http://localhost:5000"/>
+      <input type="text" id="backendInput" value="" placeholder="http://localhost:8000"/>
       <button class="connect-btn" onclick="reconnect()">reconnect</button>
     </div>
     <div class="input-row">
@@ -631,7 +631,9 @@ let isBusy        = false;    // true while a request is in-flight
 // ─────────────────────────────────────────────
 const uid  = () => 'c' + Date.now() + Math.random().toString(36).slice(2, 5);
 const esc  = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const base = ()  => document.getElementById('backendInput').value.replace(/\/$/, '');
+const backendInputEl = document.getElementById('backendInput');
+if (!backendInputEl.value.trim()) backendInputEl.value = window.location.origin;
+const base = ()  => backendInputEl.value.replace(/\/$/, '');
 
 function md(text) {
   return text
