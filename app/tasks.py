@@ -21,14 +21,16 @@ celery_app.conf.update(
 
 
 @celery_app.task(bind=True, max_retries=0)
-def process_chat(self, session_id: str, user_message: str) -> dict:
+def process_chat(self, session_id: str, user_message: str, language: str = "English") -> dict:
     from app.retriever import retrieve
     from app.llm import generate
     from app.session import get_history, append_turn
 
-    logger.info(f"Task started — session: {session_id} | message: '{user_message[:60]}'")
+    logger.info(
+        f"Task started - session: {session_id} | language: {language} | message: '{user_message[:60]}'"
+    )
 
-    # Step 1 — Retrieve relevant passages
+    # Step 1 - Retrieve relevant passages
     try:
         passages = retrieve(user_message)
     except ValueError as e:
@@ -38,21 +40,21 @@ def process_chat(self, session_id: str, user_message: str) -> dict:
         logger.error(f"Retrieval failed in task: {e}")
         return {"status": "error", "answer": str(e), "sources": []}
 
-    # Step 2 — Fetch conversation history
+    # Step 2 - Fetch conversation history
     try:
         history = get_history(session_id)
     except RuntimeError as e:
-        logger.warning(f"Could not fetch history for {session_id}: {e} — proceeding without history")
+        logger.warning(f"Could not fetch history for {session_id}: {e} - proceeding without history")
         history = []  # non-fatal, continue without history
 
-    # Step 3 — Call Ollama
+    # Step 3 - Call Ollama
     try:
-        answer = generate(passages, history, user_message)
+        answer = generate(passages, history, user_message, language)
     except RuntimeError as e:
         logger.error(f"LLM generation failed in task: {e}")
         return {"status": "error", "answer": str(e), "sources": []}
 
-    # Step 4 — Persist turn to session (non-fatal if it fails)
+    # Step 4 - Persist turn to session (non-fatal if it fails)
     try:
         append_turn(session_id, user_message, answer)
     except Exception as e:
@@ -76,5 +78,5 @@ def process_chat(self, session_id: str, user_message: str) -> dict:
 #     if p["distance"] < Config.DISTANCE_THRESHOLD
 # ]
 
-    logger.info(f"Task complete — session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
+    logger.info(f"Task complete - session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
     return {"status": "done", "answer": answer, "sources": sources}

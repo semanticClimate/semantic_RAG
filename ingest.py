@@ -5,11 +5,16 @@ from html_sectioning import parse_html_path_to_chunks
 
 def run_ingestion():
     print("Starting ingestion...")
+    source_path = Path(Config.SOURCE_HTML_PATH)
+    chunk_mode = Config.CHUNK_MODE if Config.CHUNK_MODE in {"default", "encyclopedia"} else "default"
+    print(f"Source HTML: {source_path}")
+    print(f"Chunk mode: {chunk_mode}")
 
     chunks = parse_html_path_to_chunks(
-        path=Path("input/climate_academy.html"),
+        path=source_path,
         chunk_size=Config.CHUNK_SIZE,
-        chunk_overlap=Config.CHUNK_OVERLAP
+        chunk_overlap=Config.CHUNK_OVERLAP,
+        chunk_mode=chunk_mode,
     )
     print(f"Total chunks to embed: {len(chunks)}")
 

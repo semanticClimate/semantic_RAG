@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from pathlib import Path
+from flask import Blueprint, request, jsonify, send_from_directory
 from app.session import create_session, delete_session, session_exists
 from app.tasks import process_chat
 from app.logger import get_logger
@@ -8,6 +9,13 @@ logger = get_logger(__name__)
 bp = Blueprint("api", __name__)
 
 MAX_MESSAGE_LENGTH = 2000  # characters
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+
+
+@bp.route("/", methods=["GET"])
+@bp.route("/index.html", methods=["GET"])
+def index():
+    return send_from_directory(STATIC_DIR, "index.html")
 
 
 @bp.route("/health", methods=["GET"])
@@ -53,6 +61,7 @@ def chat():
 
     session_id   = data.get("session_id", "").strip()
     user_message = data.get("message",    "").strip()
+    language     = data.get("language", "English").strip()
 
     # Validate session_id
     if not session_id:
@@ -68,6 +77,12 @@ def chat():
             "message": f"Message exceeds maximum length of {MAX_MESSAGE_LENGTH} characters"
         }), 400
 
+    if not language:
+        return jsonify({
+            "error": "invalid_language",
+            "message": "language cannot be empty"
+        }), 400
+
     # Validate session exists
     try:
         if not session_exists(session_id):
@@ -79,7 +94,7 @@ def chat():
 
     # Dispatch task
     try:
-        task = process_chat.delay(session_id, user_message)
+        task = process_chat.delay(session_id, user_message, language)
         logger.info(f"Task dispatched — task_id: {task.id} | session: {session_id}")
         return jsonify({"task_id": task.id}), 202
     except Exception as e:

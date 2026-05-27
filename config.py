@@ -25,6 +25,8 @@ class Config:
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))
     CHUNK_OVERLAP      = int(os.getenv("CHUNK_OVERLAP", 30))
+    CHUNK_MODE         = os.getenv("CHUNK_MODE", "default").strip().lower()
+    SOURCE_HTML_PATH   = os.getenv("SOURCE_HTML_PATH", "input/climate_academy.html")
 
     # Retrieval
     TOP_K              = int(os.getenv("TOP_K", 5))
