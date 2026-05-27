@@ -27,6 +27,11 @@ class Config:
     CHUNK_OVERLAP      = int(os.getenv("CHUNK_OVERLAP", 30))
     CHUNK_MODE         = os.getenv("CHUNK_MODE", "default").strip().lower()
     SOURCE_HTML_PATH   = os.getenv("SOURCE_HTML_PATH", "input/climate_academy.html")
+    SOURCE_HTML_PATHS  = [
+        p.strip()
+        for p in os.getenv("SOURCE_HTML_PATHS", "").split(",")
+        if p.strip()
+    ]
 
     # Retrieval
     TOP_K              = int(os.getenv("TOP_K", 5))
