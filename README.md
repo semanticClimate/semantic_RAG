@@ -200,8 +200,13 @@ No `.env` changes needed. The app calls `localhost:11434` which the tunnel forwa
 | `CHROMA_PATH` | `./chroma_db` | ChromaDB storage path |
 | `CHROMA_COLLECTION` | `climate_academy` | Collection name |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence transformer model |
+| `LLM_PROVIDER` | `auto` | `auto`, `ollama`, or `grok`; `auto` uses Ollama first and falls back to Grok when an API key is configured |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.1:8b` | Model name (must match `ollama list`) |
+| `GROK_API_KEY` / `XAI_API_KEY` | — | xAI API key for Grok fallback or `LLM_PROVIDER=grok` |
+| `GROK_BASE_URL` | `https://api.x.ai/v1` | xAI OpenAI-compatible API base URL |
+| `GROK_MODEL` | `grok-4.3` | Grok chat model |
+| `GROK_TIMEOUT_SECONDS` | `120` | Grok request timeout |
 | `CHUNK_SIZE` | `150` | Words per chunk |
 | `CHUNK_OVERLAP` | `30` | Overlap words between chunks |
 | `TOP_K` | `5` | Chunks retrieved per query |

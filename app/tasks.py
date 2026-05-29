@@ -47,7 +47,7 @@ def process_chat(self, session_id: str, user_message: str, language: str = "Engl
         logger.warning(f"Could not fetch history for {session_id}: {e} - proceeding without history")
         history = []  # non-fatal, continue without history
 
-    # Step 3 - Call Ollama
+    # Step 3 - Generate answer
     try:
         answer = generate(passages, history, user_message, language)
     except RuntimeError as e:

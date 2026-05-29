@@ -19,8 +19,15 @@ class Config:
     EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
     # Ollama
+    LLM_PROVIDER        = os.getenv("LLM_PROVIDER", "auto").strip().lower()
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+
+    # Grok / xAI
+    GROK_API_KEY       = os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")
+    GROK_BASE_URL      = os.getenv("GROK_BASE_URL", "https://api.x.ai/v1")
+    GROK_MODEL         = os.getenv("GROK_MODEL", "grok-4.3")
+    GROK_TIMEOUT       = float(os.getenv("GROK_TIMEOUT_SECONDS", 120))
 
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))
