@@ -348,38 +348,6 @@
     border-bottom-left-radius: 2px; border-left: 3px solid var(--ca-red);
   }
 
-  .bubble-footer {
-    display: flex; align-items: center; gap: 8px;
-    margin-top: 10px; padding-top: 8px;
-    border-top: 1px solid var(--ca-border);
-    flex-wrap: wrap;
-  }
-  .source-tag {
-    font-size: 0.6rem; color: var(--ca-muted);
-    font-family: 'IBM Plex Mono', monospace;
-    background: var(--ca-panel); padding: 2px 8px; border-radius: 3px;
-    letter-spacing: 0.06em; display: flex; align-items: center; gap: 5px;
-  }
-  .source-tag::before { content: '≡'; color: var(--ca-red); font-size: 0.75rem; }
-
-  /* Section citation tags */
-  .section-tag {
-    font-size: 0.58rem; color: var(--ca-steel);
-    font-family: 'IBM Plex Mono', monospace;
-    background: rgba(123,172,200,0.1);
-    border: 1px solid rgba(123,172,200,0.2);
-    padding: 2px 7px; border-radius: 3px;
-    letter-spacing: 0.05em;
-  }
-
-  .copy-btn {
-    background: transparent; border: none; color: var(--ca-muted);
-    font-size: .65rem; cursor: pointer; padding: 2px 6px;
-    border-radius: 3px; font-family: 'IBM Plex Mono', monospace;
-    transition: color .2s; letter-spacing: 0.05em; margin-left: auto;
-  }
-  .copy-btn:hover { color: var(--ca-steel); }
-
   /* Typing dots (shown while polling) */
   .typing { display: flex; gap: 5px; align-items: center; padding: 6px 4px; }
   .typing span { width: 6px; height: 6px; border-radius: 50%; animation: bounce 1.3s infinite; }
@@ -410,37 +378,6 @@
     background: var(--ca-dark); border-top: 1px solid var(--ca-border);
     position: relative; z-index: 5;
   }
-
-  /* Backend URL bar */
-  .backend-bar {
-    display: flex; align-items: center; gap: 8px;
-    background: rgba(13,27,42,0.7);
-    border: 1px solid var(--ca-border);
-    border-left: 3px solid var(--ca-steel);
-    border-radius: 5px; padding: 7px 13px;
-    margin-bottom: 11px;
-  }
-  .backend-bar label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem; color: var(--ca-muted);
-    letter-spacing: 0.08em; white-space: nowrap;
-    text-transform: uppercase;
-  }
-  .backend-bar input {
-    flex: 1; background: transparent; border: none;
-    color: var(--ca-steel); font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.72rem; outline: none; letter-spacing: 0.04em;
-  }
-  .backend-bar input:focus { color: var(--ca-text); }
-  .connect-btn {
-    background: transparent; border: 1px solid var(--ca-border);
-    color: var(--ca-muted); border-radius: 4px;
-    padding: 3px 10px; font-size: 0.62rem;
-    font-family: 'IBM Plex Mono', monospace;
-    cursor: pointer; transition: all .2s;
-    letter-spacing: 0.06em; white-space: nowrap;
-  }
-  .connect-btn:hover { border-color: var(--ca-steel); color: var(--ca-steel); }
 
   .input-row {
     display: flex; gap: 10px; align-items: flex-end;
@@ -508,9 +445,6 @@
     #topbar { height: auto; min-height: 48px; padding: 10px 12px; }
     .topbar-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     #topbar-title { max-width: 170px; font-size: 0.9rem; }
-    .backend-bar { flex-wrap: wrap; gap: 6px; }
-    .backend-bar label { width: 100%; }
-    .backend-bar input { min-width: 100%; }
     .input-row { padding: 8px 10px; }
     textarea { font-size: 0.86rem; }
   }
@@ -594,11 +528,6 @@
   </div>
 
   <div id="footer">
-    <div class="backend-bar">
-      <label>API</label>
-      <input type="text" id="backendInput" value="" placeholder="http://localhost:8000"/>
-      <button class="connect-btn" onclick="reconnect()">reconnect</button>
-    </div>
     <div class="input-row">
       <textarea id="input" placeholder="Ask anything about the Climate Academy book…" rows="1"
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -607,7 +536,7 @@
       </button>
     </div>
     <div class="footer-hint">
-      Enter ↵ send<span class="sep">·</span>Shift+Enter new line<span class="sep">·</span>Each chat has its own session<span class="sep">·</span>Export anytime
+      Enter ↵ send<span class="sep">·</span>Shift+Enter new line<span class="sep">·</span>Export anytime
     </div>
   </div>
 </div>
@@ -631,9 +560,7 @@ let isBusy        = false;    // true while a request is in-flight
 // ─────────────────────────────────────────────
 const uid  = () => 'c' + Date.now() + Math.random().toString(36).slice(2, 5);
 const esc  = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const backendInputEl = document.getElementById('backendInput');
-if (!backendInputEl.value.trim()) backendInputEl.value = window.location.origin;
-const base = ()  => backendInputEl.value.replace(/\/$/, '');
+const base = ()  => window.location.origin.replace(/\/$/, '');
 
 function md(text) {
   return text
@@ -691,7 +618,7 @@ async function newChat() {
     sessionId = await createSession();
   } catch (err) {
     setStatus('error', 'ERROR');
-    alert('Could not create session. Is the Flask backend running?\n\n' + err.message);
+    alert('Could not start a new chat. Please try again.\n\n' + err.message);
     return;
   }
   const lang = document.getElementById('langSelect').value;
@@ -792,7 +719,7 @@ function renderChatArea() {
   }
   chat.messages.forEach((m, i) => {
     addUserBubble(m.q, chatEl);
-    addBotBubble(m.a, m.sources || [], chatEl, chat.lang, i);
+    addBotBubble(m.a, chatEl);
   });
   chatEl.scrollTop = chatEl.scrollHeight;
 }
@@ -807,12 +734,7 @@ function addUserBubble(text, container) {
   container.appendChild(d);
 }
 
-function addBotBubble(text, sources, container, lang, idx) {
-  // Build source section-tag pills from sources array
-  const sourcePills = (sources || []).map(s =>
-    `<span class="section-tag">§${esc(s.section_number)} ${esc(s.section_title)}</span>`
-  ).join('');
-
+function addBotBubble(text, container) {
   const d = document.createElement('div');
   d.className = 'msg bot';
   d.innerHTML = `
@@ -821,11 +743,6 @@ function addBotBubble(text, sources, container, lang, idx) {
     </div>
     <div class="bubble">
       ${md(text)}
-      <div class="bubble-footer">
-        <span class="source-tag">Climate Academy · ${esc(lang)}</span>
-        ${sourcePills}
-        <button class="copy-btn" onclick="copyMsg(${idx})">⧉ copy</button>
-      </div>
     </div>`;
   container.appendChild(d);
 }
@@ -876,7 +793,7 @@ function pollResult(taskId) {
         clearInterval(interval);
 
         if (res.ok && data.status === 'done') {
-          resolve(data); // { status, answer, sources }
+          resolve(data);
         } else {
           reject(new Error(data.answer || 'Unknown error from worker'));
         }
@@ -937,8 +854,6 @@ async function sendMessage() {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   let answerText = '';
-  let sources    = [];
-
   try {
     // ── Step 1: POST /chat ──────────────────────────────────────────
     const chatRes = await fetch(`${base()}/chat`, {
@@ -962,8 +877,6 @@ async function sendMessage() {
     // ── Step 2: Poll /result/<task_id> ──────────────────────────────
     const result = await pollResult(task_id);
     answerText   = result.answer  || '';
-    sources      = result.sources || [];
-
   } catch (err) {
     answerText = `Could not get a response: ${err.message}`;
     // Mark bubble as error style
@@ -975,11 +888,10 @@ async function sendMessage() {
   const typingMsg = document.getElementById('typingMsg');
   if (typingMsg) typingMsg.remove();
 
-  const msgIdx = chat.messages.length;
-  addBotBubble(answerText, sources, chatEl, lang, msgIdx);
+  addBotBubble(answerText, chatEl);
 
   // Save to in-memory chat history
-  chat.messages.push({ q: query, a: answerText, sources });
+  chat.messages.push({ q: query, a: answerText });
   document.getElementById('downloadBtn').style.display = 'inline-block';
 
   // Unlock UI
@@ -1021,13 +933,13 @@ function downloadCurrentChat() {
 }
 
 // ─────────────────────────────────────────────
-//  COPY
+//  UNUSED LEGACY COPY
 // ─────────────────────────────────────────────
-function copyMsg(idx) {
+function unusedCopyMsg(idx) {
   const chat = getActive(); if (!chat) return;
   const m    = chat.messages[idx];
   navigator.clipboard.writeText(`Q: ${m.q}\n\nA: ${m.a}`).then(() => {
-    document.querySelectorAll('.copy-btn').forEach((btn, i) => {
+    document.querySelectorAll('.unused-copy-control').forEach((btn, i) => {
       if (i === idx) { btn.textContent = '✓ copied'; setTimeout(() => btn.textContent = '⧉ copy', 1500); }
     });
   });
