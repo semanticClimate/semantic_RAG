@@ -177,18 +177,75 @@ def _parse_section_tree(section: Tag, counters: List[int], parent_depth: int) ->
     return out
 
 
+def _parse_flat_book_headings(root: Tag) -> List[SectionRecord]:
+    records: List[SectionRecord] = []
+    counters = [0] * MAX_OUTLINE_DEPTH
+    current_rec = None
+    current_body_parts = []
+    
+    for child in _direct_child_tags(root):
+        if child.name == "section" and (child.get("id") == "footnotes" or "footnotes" in child.get("class", [])):
+            continue
+            
+        if child.name in HEADING_TAGS:
+            if current_rec:
+                body = _normalize_whitespace("\n".join(current_body_parts))
+                if body:
+                    records.append(SectionRecord(
+                        section_number=current_rec["number"],
+                        title=current_rec["title"],
+                        body=body,
+                        level=current_rec["level"]
+                    ))
+            
+            level = int(child.name[1])
+            _bump_counters(counters, level)
+            number = _format_section_number(counters, level)
+            title = child.get_text(separator=" ", strip=True)
+            
+            current_rec = {
+                "number": number,
+                "title": title,
+                "level": level
+            }
+            current_body_parts = []
+        else:
+            text = child.get_text(separator=" ", strip=True)
+            if text:
+                current_body_parts.append(text)
+                
+    if current_rec:
+        body = _normalize_whitespace("\n".join(current_body_parts))
+        if body:
+            records.append(SectionRecord(
+                section_number=current_rec["number"],
+                title=current_rec["title"],
+                body=body,
+                level=current_rec["level"]
+            ))
+            
+    return records
+
+
 def parse_book_html(html: str) -> List[SectionRecord]:
     soup = BeautifulSoup(html, "html.parser")
     root = find_book_root(soup)
-    top_sections = [c for c in _direct_child_tags(root) if c.name == "section"]
+    top_sections = [c for c in _direct_child_tags(root) if c.name == "section" and c.get("id") != "footnotes" and "footnotes" not in c.get("class", [])]
+    has_direct_headings = any(c.name in HEADING_TAGS for c in _direct_child_tags(root))
     counters = [0] * MAX_OUTLINE_DEPTH
     records: List[SectionRecord] = []
 
-    if top_sections:
+    if top_sections and not has_direct_headings:
         for sec in top_sections:
             records.extend(_parse_section_tree(sec, counters, parent_depth=0))
         return records
 
+    # Try flat heading parsing first
+    records = _parse_flat_book_headings(root)
+    if records:
+        return records
+
+    # Fallback to single section parse if no headings found
     title, _ = _first_heading_title(root)
     if not title:
         t = root.find(["h1", "h2"])
@@ -332,3 +389,4 @@ def parse_html_path_to_chunks(
     html = load_html_file(path)
     records = parse_book_html(html)
     return records_to_indexed_chunks(records, chunk_size, chunk_overlap, chunk_mode=chunk_mode)
+
