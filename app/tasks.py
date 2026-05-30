@@ -47,7 +47,8 @@ def process_chat(self, session_id: str, user_message: str) -> dict:
 
     # Step 3 — Call Ollama
     try:
-        answer = generate(passages, history, user_message)
+        # answer = generate(passages, history, user_message)
+        answer, backend = generate(passages, history, user_message)
     except RuntimeError as e:
         logger.error(f"LLM generation failed in task: {e}")
         return {"status": "error", "answer": str(e), "sources": []}

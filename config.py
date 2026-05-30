@@ -22,6 +22,10 @@ class Config:
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
+    # Groq (fallback when Ollama is unavailable)
+    GROQ_API_KEY       = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL         = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))
     CHUNK_OVERLAP      = int(os.getenv("CHUNK_OVERLAP", 30))
