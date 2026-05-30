@@ -1,8 +1,19 @@
 """
-HTML book outline parsing, decimal section numbering, and chunking for RAG.
+HTML book outline parsing and chunking for RAG.
 
-Expects structured HTML (see docs/HTML_SECTION_NESTING.md): nested <section>
-elements with data-outline-level (recommended) and a heading (h1–h6) per section.
+Designed for flat HTML documents structured with heading tags (h1-h6)
+as section boundaries, NOT nested <section> elements.
+
+The parser walks all top-level elements in document order. Every time
+a heading is encountered, a new section begins. All non-heading content
+between two headings belongs to the most recent heading's section.
+
+This matches the structure of climate_academy.html which uses:
+  <h1> — chapter titles
+  <h2> — Introduction / Main Text / Conclusion labels (skipped)
+  <h3> — named subsections
+  <h4> — named sub-subsections
+  <p>, <ol>, <ul>, <table>, <blockquote>, <figure> — content elements
 """
 
 from __future__ import annotations
@@ -14,14 +25,26 @@ from typing import Iterable, List, Optional, Tuple
 
 from bs4 import BeautifulSoup, NavigableString, Tag
 
-HEADING_TAGS = tuple(f"h{i}" for i in range(1, 7))
+# Tags that signal a new section boundary
+HEADING_TAGS = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+
+# Maximum outline depth
 MAX_OUTLINE_DEPTH = 6
+
+# H1 IDs to skip entirely — table of contents and other non-content headings
+SKIP_H1_IDS = {'contents', 'section', 'section-3', 'section-4', 'section-5'}
+
+# Generic H2 labels that are structural dividers, not meaningful section titles.
+# Text under these headings is kept but attributed to the parent H1 chapter.
+SKIP_H2_TITLES = {
+    'introduction', 'main text', 'conclusion', 'conclusions',
+    'the bottom line', 'main text', 'overview'
+}
 
 
 @dataclass(frozen=True)
 class SectionRecord:
-    """One indexed section with extractable body text (no nested <section> content)."""
-
+    """One parsed section with its heading metadata and body text."""
     section_number: str
     title: str
     body: str
@@ -30,221 +53,170 @@ class SectionRecord:
 
 def load_html_file(path: Path | str) -> str:
     p = Path(path)
-    assert p.is_file(), f"HTML book not found at {p.resolve()}"
+    assert p.is_file(), f"HTML file not found: {p.resolve()}"
     return p.read_text(encoding="utf-8", errors="replace")
 
 
-def find_book_root(soup: BeautifulSoup) -> Tag:
-    """Prefer <article id='climate-academy-book'>; fall back to <main> or <body>."""
-    for sel in ("article#climate-academy-book", "article.book", "main", "body"):
-        found = soup.select_one(sel)
-        if found:
-            return found
-    return soup
-
-
-def _direct_child_tags(tag: Tag) -> List[Tag]:
-    return [c for c in tag.children if isinstance(c, Tag)]
-
-
-def _section_level_from_attr(tag: Tag) -> Optional[int]:
-    raw = tag.get("data-outline-level")
-    if raw is None:
-        return None
-    try:
-        n = int(str(raw).strip())
-    except ValueError:
-        return None
-    if 1 <= n <= MAX_OUTLINE_DEPTH:
-        return n
-    return None
-
-
-def _first_heading_title(tag: Tag) -> Tuple[Optional[str], Optional[int]]:
-    """First h1–h6 in document order within this subtree; returns (title, level 1–6)."""
-    for h in tag.find_all(HEADING_TAGS):
-        text = h.get_text(separator=" ", strip=True)
-        if not text:
-            continue
-        level = int(h.name[1])
-        return text, level
-    return None, None
-
-
-def _heading_from_direct_content(section: Tag) -> Tuple[Optional[str], Optional[int]]:
-    """
-    Heading that belongs to this section only — not inside nested <section> children.
-    """
-    for child in _direct_child_tags(section):
-        if child.name == "section":
-            continue
-        if child.name in HEADING_TAGS:
-            text = child.get_text(separator=" ", strip=True)
-            if text:
-                return text, int(child.name[1])
-        for h in child.find_all(HEADING_TAGS):
-            parent_sec = h.find_parent("section")
-            if parent_sec is section and h.get_text(strip=True):
-                return h.get_text(separator=" ", strip=True), int(h.name[1])
-    return None, None
-
-
-def _section_title_and_level(tag: Tag, parent_depth: int, default_child_level: int) -> Tuple[str, int]:
-    """
-    Title from first heading in section. Level from data-outline-level, else heading level,
-    else default_child_level (typically parent_depth + 1).
-    """
-    attr_level = _section_level_from_attr(tag)
-    h_title, h_level = _heading_from_direct_content(tag)
-    title = h_title or tag.get("aria-label") or ""
-    title = re.sub(r"\s+", " ", title).strip()
-    if attr_level is not None:
-        level = attr_level
-    elif h_level is not None:
-        level = h_level
-    else:
-        level = default_child_level
-    if level <= parent_depth:
-        level = parent_depth + 1
-    if level > MAX_OUTLINE_DEPTH:
-        level = MAX_OUTLINE_DEPTH
-    return title, level
-
-
-def _split_intro_and_child_sections(section: Tag) -> Tuple[List[Tag], List[Tag]]:
-    intro: List[Tag] = []
-    children: List[Tag] = []
-    for child in _direct_child_tags(section):
-        if child.name == "section":
-            children.append(child)
-        else:
-            intro.append(child)
-    return intro, children
-
-
-def _strip_nested_sections(tag: Tag) -> str:
-    """Text content of tag with nested <section> subtrees removed (avoid double-counting)."""
-    clone = BeautifulSoup(str(tag), "html.parser")
-    root = clone.find() or clone
-    for nested in root.find_all("section"):
-        nested.decompose()
-    return root.get_text(separator="\n", strip=True)
-
-
 def _normalize_whitespace(text: str) -> str:
-    text = text.replace("\u00a0", " ")
-    text = re.sub(r"[ \t]+\n", "\n", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    text = re.sub(r" {2,}", " ", text)
+    """Clean up whitespace without destroying paragraph breaks."""
+    text = text.replace("\u00a0", " ")          # non-breaking spaces
+    text = re.sub(r"[ \t]+\n", "\n", text)      # trailing whitespace on lines
+    text = re.sub(r"\n{3,}", "\n\n", text)      # more than 2 blank lines
+    text = re.sub(r" {2,}", " ", text)          # multiple spaces
     return text.strip()
 
 
-def _bump_counters(counters: List[int], level: int) -> None:
-    """1-based level; increment at depth and zero deeper slots."""
+def _element_text(el: Tag) -> str:
+    """Extract clean text from a content element."""
+    return _normalize_whitespace(el.get_text(separator=" ", strip=True))
+
+
+def _bump_counters(counters: List[int], level: int) -> str:
+    """Increment counter at this level, reset all deeper levels, return dotted number."""
     idx = level - 1
     counters[idx] += 1
     for j in range(level, MAX_OUTLINE_DEPTH):
         counters[j] = 0
-
-
-def _format_section_number(counters: List[int], level: int) -> str:
     return ".".join(str(counters[i]) for i in range(level))
 
 
-def _parse_section_tree(section: Tag, counters: List[int], parent_depth: int) -> List[SectionRecord]:
-    default_child = min(parent_depth + 1, MAX_OUTLINE_DEPTH)
-    title, level = _section_title_and_level(section, parent_depth, default_child)
-    _bump_counters(counters, level)
-    number = _format_section_number(counters, level)
+def _should_skip_heading(tag: Tag) -> bool:
+    """
+    Return True for headings that should not start a new section.
 
-    intro_tags, child_sections = _split_intro_and_child_sections(section)
-    if intro_tags:
-        container = section
-        body = _normalize_whitespace(
-            BeautifulSoup("".join(str(t) for t in intro_tags), "html.parser").get_text(
-                separator="\n", strip=True
-            )
-        )
-    else:
-        body = ""
+    Skips:
+    - Empty headings (alt-text IDs from images, etc.)
+    - Table of contents H1
+    - Generic structural H2 labels (Introduction, Main Text, Conclusion)
+    """
+    title = re.sub(r"\s+", " ", tag.get_text(strip=True)).strip()
+    tag_id = tag.get("id", "")
+    level = int(tag.name[1])
 
-    if not body:
-        body = _normalize_whitespace(_strip_nested_sections(section))
-        for nested in section.find_all("section"):
-            nested_body = nested.get_text(separator="\n", strip=True)
-            if nested_body and nested_body in body:
-                body = body.replace(nested_body, "")
-        body = _normalize_whitespace(body)
+    if not title:
+        return True
 
-    out: List[SectionRecord] = []
-    if body:
-        out.append(
-            SectionRecord(section_number=number, title=title, body=body, level=level)
-        )
+    if level == 1 and any(skip in tag_id for skip in SKIP_H1_IDS):
+        return True
 
-    child_parent_depth = level
-    for child in child_sections:
-        out.extend(_parse_section_tree(child, counters, child_parent_depth))
-    return out
+    if level == 2 and title.lower() in SKIP_H2_TITLES:
+        return True
+
+    return False
 
 
 def parse_book_html(html: str) -> List[SectionRecord]:
     """
-    Parse book HTML into section records with decimal section_number strings.
+    Parse a flat heading-structured HTML document into SectionRecord objects.
 
-    Root: first match of article#climate-academy-book, article.book, main, or body.
-    Only direct <section> children of the root are outline roots; if none, one synthetic
-    section "1" is created from visible text (nested sections stripped).
+    Walks all top-level elements in document order. Headings act as section
+    boundary markers. Body content accumulates between headings.
+
+    Returns a list of SectionRecord objects, one per meaningful heading,
+    with decimal section numbers reflecting the heading hierarchy.
     """
     soup = BeautifulSoup(html, "html.parser")
-    root = find_book_root(soup)
-    top_sections = [c for c in _direct_child_tags(root) if c.name == "section"]
+
+    # Collect all top-level elements — this book has no body/html wrapper
+    all_elements = [
+        el for el in soup.children
+        if isinstance(el, Tag)
+    ]
+
+    # Skip footnotes section entirely
+    footnote_ids = set()
+    for el in all_elements:
+        if el.name == 'section' and 'footnotes' in el.get('class', []):
+            footnote_ids.add(id(el))
+
     counters = [0] * MAX_OUTLINE_DEPTH
     records: List[SectionRecord] = []
 
-    if top_sections:
-        for sec in top_sections:
-            records.extend(_parse_section_tree(sec, counters, parent_depth=0))
-        return records
+    current_title: Optional[str] = None
+    current_level: Optional[int] = None
+    current_number: Optional[str] = None
+    current_body_parts: List[str] = []
 
-    title, _ = _first_heading_title(root)
-    if not title:
-        t = root.find(["h1", "h2"])
-        title = t.get_text(strip=True) if t else "Book"
-    body = _normalize_whitespace(_strip_nested_sections(root))
-    if not body:
-        body = _normalize_whitespace(root.get_text(separator="\n", strip=True))
-    if body:
-        counters[0] = 1
-        records.append(
-            SectionRecord(section_number="1", title=title, body=body, level=1)
-        )
+    def flush():
+        """Save the accumulated section if it has content."""
+        if not current_title or not current_body_parts:
+            return
+        body = _normalize_whitespace("\n".join(
+            part for part in current_body_parts if part.strip()
+        ))
+        if body:
+            records.append(SectionRecord(
+                section_number=current_number,
+                title=current_title,
+                body=body,
+                level=current_level,
+            ))
+
+    for el in all_elements:
+        # Skip footnote section
+        if id(el) in footnote_ids:
+            continue
+
+        if el.name in HEADING_TAGS:
+            if _should_skip_heading(el):
+                # Structural heading — don't start new section,
+                # but keep collecting body under current section
+                continue
+
+            # New meaningful heading — flush the previous section first
+            flush()
+
+            title = re.sub(r"\s+", " ", el.get_text(strip=True)).strip()
+            level = int(el.name[1])
+            number = _bump_counters(counters, level)
+
+            current_title = title
+            current_level = level
+            current_number = number
+            current_body_parts = []
+
+        else:
+            # Content element — collect text if we are inside a section
+            if current_title is not None:
+                text = _element_text(el)
+                if text:
+                    current_body_parts.append(text)
+
+    # Don't forget the last section
+    flush()
+
     return records
 
 
 def word_chunks(text: str, chunk_size: int, overlap: int) -> List[str]:
-    """Split on words; chunk_size and overlap are word counts."""
-    words = text.split()
+    """
+    Split text into overlapping word-count windows.
+
+    chunk_size and overlap are in words, not tokens.
+    Overlap ensures sentences at chunk boundaries appear in both adjacent chunks.
+    """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("overlap must be in [0, chunk_size)")
+
+    words = text.split()
     chunks: List[str] = []
+    step = chunk_size - overlap
     i = 0
     while i < len(words):
-        chunks.append(" ".join(words[i : i + chunk_size]))
-        i += chunk_size - overlap
+        chunks.append(" ".join(words[i: i + chunk_size]))
+        i += step
     return chunks
 
 
 @dataclass(frozen=True)
 class IndexedChunk:
-    """One embedding unit with section metadata."""
-
-    document: str
-    section_number: str
-    section_title: str
-    chunk_index: int
+    """One embedding unit: a chunk of text with its section metadata."""
+    document: str           # formatted string sent to the embedder and LLM
+    section_number: str     # e.g. "3.2.1"
+    section_title: str      # e.g. "The Greenhouse Effect"
+    chunk_index: int        # position within the section (0-based)
 
 
 def records_to_indexed_chunks(
@@ -252,35 +224,30 @@ def records_to_indexed_chunks(
     chunk_size: int,
     chunk_overlap: int,
 ) -> List[IndexedChunk]:
+    """
+    Convert SectionRecord objects into IndexedChunk objects ready for embedding.
+
+    Each chunk is prefixed with a section header in the format:
+        [§ 3.2 — The Greenhouse Effect]
+    This header is included in the embedded text so the embedding captures
+    the section context, and is shown to the LLM as a citation reference.
+    """
     out: List[IndexedChunk] = []
     for rec in records:
-        for idx, part in enumerate(word_chunks(rec.body, chunk_size, chunk_overlap)):
+        chunks = word_chunks(rec.body, chunk_size, chunk_overlap)
+        for idx, part in enumerate(chunks):
             header = f"[§ {rec.section_number}"
             if rec.title:
                 header += f" — {rec.title}"
             header += "]"
-            doc = f"{header}\n{part}"
-            out.append(
-                IndexedChunk(
-                    document=doc,
-                    section_number=rec.section_number,
-                    section_title=rec.title,
-                    chunk_index=idx,
-                )
-            )
+            document = f"{header}\n{part}"
+            out.append(IndexedChunk(
+                document=document,
+                section_number=rec.section_number,
+                section_title=rec.title,
+                chunk_index=idx,
+            ))
     return out
-
-
-def format_passage_for_prompt(section_number: str, section_title: str, body: str) -> str:
-    """Format a retrieved chunk for the LLM (strip duplicate bracket line if present)."""
-    t = body.strip()
-    if t.startswith("[§"):
-        return t
-    line = f"[§ {section_number}"
-    if section_title:
-        line += f" — {section_title}"
-    line += "]"
-    return f"{line}\n{t}"
 
 
 def parse_html_path_to_chunks(
@@ -288,6 +255,10 @@ def parse_html_path_to_chunks(
     chunk_size: int,
     chunk_overlap: int,
 ) -> List[IndexedChunk]:
+    """
+    Full pipeline: load HTML file → parse sections → produce indexed chunks.
+    Called by ingest.py.
+    """
     html = load_html_file(path)
     records = parse_book_html(html)
     return records_to_indexed_chunks(records, chunk_size, chunk_overlap)
