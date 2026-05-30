@@ -1,4 +1,3 @@
-import ollama
 import httpx
 from config import Config
 from app.logger import get_logger
@@ -70,6 +69,7 @@ def generate(
 
 
 def _generate_with_ollama(messages: list[dict], passage_count: int, history_count: int) -> str:
+    import ollama
     logger.info(
         f"Calling Ollama model '{Config.OLLAMA_MODEL}' at {Config.OLLAMA_BASE_URL} - "
         f"{passage_count} passages, {history_count} history messages"
