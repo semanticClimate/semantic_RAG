@@ -389,4 +389,3 @@ def parse_html_path_to_chunks(
     html = load_html_file(path)
     records = parse_book_html(html)
     return records_to_indexed_chunks(records, chunk_size, chunk_overlap, chunk_mode=chunk_mode)
-
