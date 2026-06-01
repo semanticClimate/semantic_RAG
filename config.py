@@ -16,7 +16,9 @@ class Config:
     CHROMA_COLLECTION  = os.getenv("CHROMA_COLLECTION", "climate_academy")
 
     # Embedding
-    EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    EMBEDDING_MODEL      = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    EMBEDDING_PROVIDER   = os.getenv("EMBEDDING_PROVIDER", "hf").strip().lower()
+    GROK_EMBEDDING_MODEL = os.getenv("GROK_EMBEDDING_MODEL", "grok-embedding-small")
 
     # Ollama
     LLM_PROVIDER        = os.getenv("LLM_PROVIDER", "auto").strip().lower()
