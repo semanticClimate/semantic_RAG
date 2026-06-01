@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: climate-rag-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python ingest.py
+    startCommand: bash start.sh
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: LLM_PROVIDER
+        value: grok
+      - key: GROK_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: climate-redis
+          property: connectionString
+
+redis:
+  - name: climate-redis
+    plan: free
+    ipAllowList: []
