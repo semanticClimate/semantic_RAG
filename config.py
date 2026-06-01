@@ -25,10 +25,19 @@ class Config:
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
 
-    # Grok / xAI
+    # Grok / xAI / Groq
     GROK_API_KEY       = os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")
-    GROK_BASE_URL      = os.getenv("GROK_BASE_URL", "https://api.x.ai/v1")
-    GROK_MODEL         = os.getenv("GROK_MODEL", "grok-4.3")
+    
+    # Auto-detect Groq vs Grok based on API key prefix
+    if GROK_API_KEY and GROK_API_KEY.startswith("gsk_"):
+        _default_base = "https://api.groq.com/openai/v1"
+        _default_model = "llama3-8b-8192"
+    else:
+        _default_base = "https://api.x.ai/v1"
+        _default_model = "grok-4.3"
+
+    GROK_BASE_URL      = os.getenv("GROK_BASE_URL", _default_base)
+    GROK_MODEL         = os.getenv("GROK_MODEL", _default_model)
     GROK_TIMEOUT       = float(os.getenv("GROK_TIMEOUT_SECONDS", 120))
 
     # Chunking
