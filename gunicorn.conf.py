@@ -6,11 +6,14 @@ from config import Config
 bind            = "0.0.0.0:8000"
 
 # Workers — standard formula is (2 × CPU cores) + 1
-# For a server with 4 cores this gives 9, but cap at 4 for our workload
-# since the heavy work is in Celery workers, not Flask
-workers         = 4
+# For a free tier with 512MB RAM, we MUST restrict this to 1 worker
+# otherwise we will run out of memory (OOM).
+workers         = 1
 worker_class    = "gevent"       # async worker — handles concurrent connections efficiently
 worker_connections = 100         # max simultaneous connections per worker
+
+# Preload app to save memory
+preload_app     = True
 
 # Timeouts
 timeout         = 120            # worker killed if silent for 120s (enough for long polls)
