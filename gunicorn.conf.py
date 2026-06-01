@@ -18,8 +18,8 @@ keepalive       = 5              # keep connection alive for 5s between requests
 graceful_timeout = 30            # time given to finish in-flight requests on shutdown
 
 # Logging
-accesslog       = "/mnt/d/semantic_rag/semantic_RAG/logs/climate-rag/access.log"
-errorlog        = "/mnt/d/semantic_rag/semantic_RAG/logs/climate-rag/error.log"
+accesslog       = "-"
+errorlog        = "-"
 loglevel        = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sµs'
 
