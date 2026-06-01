@@ -1,5 +1,5 @@
-import redis as redis_lib
 from celery import Celery
+from celery.signals import worker_ready
 from config import Config
 from app.logger import get_logger
 
@@ -20,13 +20,28 @@ celery_app.conf.update(
 )
 
 
+# ── Retriever warm-up on worker startup ───────────────────────────────────────
+# Pre-loads BM25 index and cross-encoder reranker so the first user request
+# does not pay the loading cost (~200ms for BM25, ~400ms for cross-encoder).
+
+@worker_ready.connect
+def on_worker_ready(sender, **kwargs):
+    from app.retriever import warm_up
+    warm_up()
+
+
+# ── Main task ─────────────────────────────────────────────────────────────────
+
 @celery_app.task(bind=True, max_retries=0)
 def process_chat(self, session_id: str, user_message: str) -> dict:
     from app.retriever import retrieve
     from app.llm import generate
     from app.session import get_history, append_turn
 
-    logger.info(f"Task started — session: {session_id} | message: '{user_message[:60]}'")
+    logger.info(
+        f"Task started — session: {session_id} | "
+        f"message: '{user_message[:60]}'"
+    )
 
     # Step 1 — Retrieve relevant passages
     try:
@@ -42,13 +57,16 @@ def process_chat(self, session_id: str, user_message: str) -> dict:
     try:
         history = get_history(session_id)
     except RuntimeError as e:
-        logger.warning(f"Could not fetch history for {session_id}: {e} — proceeding without history")
+        logger.warning(
+            f"Could not fetch history for {session_id}: {e} "
+            f"— proceeding without history"
+        )
         history = []  # non-fatal, continue without history
 
-    # Step 3 — Call Ollama
+    # Step 3 — Call LLM (Ollama primary, Groq fallback)
     try:
-        # answer = generate(passages, history, user_message)
         answer, backend = generate(passages, history, user_message)
+        logger.info(f"LLM backend used: {backend}")
     except RuntimeError as e:
         logger.error(f"LLM generation failed in task: {e}")
         return {"status": "error", "answer": str(e), "sources": []}
@@ -59,23 +77,27 @@ def process_chat(self, session_id: str, user_message: str) -> dict:
     except Exception as e:
         logger.warning(f"Could not save turn to session {session_id}: {e}")
 
+    # Build sources list.
+    # All reranked passages are included regardless of distance so the LLM
+    # has full citation context. BM25-only passages have no "distance" key.
+    #
+    # To restrict sources to only threshold-passing chunks, use this instead:
+    #   sources = [
+    #       {"section_number": p["section_number"],
+    #        "section_title":  p["section_title"]}
+    #       for p in passages
+    #       if p.get("distance") is None or p["distance"] < Config.DISTANCE_THRESHOLD
+    #   ]
     sources = [
         {
             "section_number": p["section_number"],
-            "section_title":  p["section_title"]
+            "section_title":  p["section_title"],
         }
         for p in passages
     ]
 
-# Only return sources if chunks were within threshold (not fallback results)
-# sources = [
-#     {
-#         "section_number": p["section_number"],
-#         "section_title":  p["section_title"]
-#     }
-#     for p in passages
-#     if p["distance"] < Config.DISTANCE_THRESHOLD
-# ]
-
-    logger.info(f"Task complete — session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
+    logger.info(
+        f"Task complete — session: {session_id} | "
+        f"answer: {len(answer)} chars | sources: {len(sources)}"
+    )
     return {"status": "done", "answer": answer, "sources": sources}

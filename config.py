@@ -38,3 +38,5 @@ class Config:
     SESSION_TTL        = int(os.getenv("SESSION_TTL_SECONDS", 86400))
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+    RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
