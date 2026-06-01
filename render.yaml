@@ -16,11 +16,11 @@ services:
         generateValue: true
       - key: REDIS_URL
         fromService:
-          type: redis
+          type: keyvalue
           name: climate-redis
           property: connectionString
 
-redis:
-  - name: climate-redis
+  - type: keyvalue
+    name: climate-redis
     plan: free
     ipAllowList: []
