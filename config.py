@@ -31,7 +31,7 @@ class Config:
     # Auto-detect Groq vs Grok based on API key prefix
     if GROK_API_KEY and GROK_API_KEY.startswith("gsk_"):
         _default_base = "https://api.groq.com/openai/v1"
-        _default_model = "llama3-8b-8192"
+        _default_model = "llama-3.3-70b-versatile"
     else:
         _default_base = "https://api.x.ai/v1"
         _default_model = "grok-4.3"
