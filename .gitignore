@@ -16,6 +16,7 @@ instance/
 
 # Databases (if using SQLite)
 *.sqlite3
+!chroma_db/*.sqlite3
 *.db
 
 # Distribution / Build
