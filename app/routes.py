@@ -12,11 +12,11 @@ MAX_MESSAGE_LENGTH = 2000  # characters
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 
+
 @bp.route("/", methods=["GET"])
 @bp.route("/index.html", methods=["GET"])
 def index():
     return send_from_directory(STATIC_DIR, "index.html")
-
 
 @bp.route("/health", methods=["GET"])
 def health():

@@ -5,33 +5,62 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _format_passage(p: dict) -> str:
+    """
+    Render a single passage with a clear source header so the LLM knows
+    whether it is reading from the book or the encyclopedia.
+    """
+    source_type = p.get("source_type", "book")
+
+    if source_type == "book":
+        ch_num   = p.get("chapter_number", "")
+        ch_title = p.get("chapter_title", "") or p.get("section_title", "")
+        header   = f"[BOOK — Ch.{ch_num}: {ch_title}]" if ch_num else f"[BOOK — {ch_title}]"
+    else:
+        term   = p.get("term", "") or p.get("section_title", "")
+        header = f"[ENCYCLOPEDIA — {term}]"
+
+    return f"{header}\n{p['document']}"
+
+
 def build_system_prompt(
     passages: list[dict],
-    query: str,
     language: str = "the same language as the user",
 ) -> str:
-    context_block = "\n\n".join(p["document"] for p in passages)
-    return f"""You are the Climate Academy study assistant.
-Use the provided book passages as your primary source and answer in clear student-friendly language.
+    context_block = "\n\n".join(_format_passage(p) for p in passages)
 
-Rules:
-1. Ground your answer in the passages and do not invent facts.
-2. If passages are partial, give the best supported answer and state what is uncertain.
-3. If the answer is truly missing, say: "I could not find that in the Climate Academy book." and ask one short follow-up question.
-4. Keep the response concise but meaningful (4-8 sentences for normal questions).
-5. Reply in {language}.
+    has_book = any(p.get("source_type") == "book" for p in passages)
+    has_enc  = any(p.get("source_type") == "encyclopedia" for p in passages)
 
---- BOOK PASSAGES ---
+    if has_book and has_enc:
+        source_desc = "the Climate Academy book and the Climate Academy Encyclopedia"
+    elif has_enc:
+        source_desc = "the Climate Academy Encyclopedia"
+    else:
+        source_desc = "the Climate Academy book"
+
+    return f"""You are the Climate Academy study assistant. You answer STRICTLY and ONLY from the passages provided below.
+
+The passages come from {source_desc}. Each passage is labelled [BOOK — ...] or [ENCYCLOPEDIA — ...] so you know its origin.
+
+ABSOLUTE RULES — never break these:
+
+1. Your ONLY source of information is the PASSAGES block below.
+2. You MUST NOT use any of your pre-trained / world knowledge — not even to add a sentence, clarify, or supplement.
+3. You MUST NOT infer, extrapolate, or assume facts that are not explicitly stated in the passages.
+4. You MUST NOT guess.
+5. Use BOTH book and encyclopedia passages if they are relevant — they are complementary sources.
+6. If the answer is not explicitly and clearly present in the passages, you MUST respond with exactly:
+   "I could not find that in the Climate Academy materials."
+   Do NOT attempt to answer even partially from memory.
+7. If only part of the answer is in the passages, answer only that part and say the rest was not found in the materials.
+8. Respond in {language}.
+
+--- PASSAGES BEGIN ---
 {context_block}
---- END OF PASSAGES ---
+--- PASSAGES END ---
 
-User question: {query}
-
-Answer with:
-- Short direct answer
-- 2-4 key points
-- Optional one-line clarification if needed
-"""
+Answer the user's question using ONLY the passages above. If the answer is not there, say so."""
 
 
 def generate(
@@ -41,9 +70,9 @@ def generate(
     language: str = "English",
 ) -> str:
     if not passages:
-        logger.warning("generate() called with empty passages list")
+        return "I could not find that in the Climate Academy materials."
 
-    system_prompt = build_system_prompt(passages, user_message, language)
+    system_prompt = build_system_prompt(passages, language)
     messages = [{"role": "system", "content": system_prompt}]
     messages += history
     messages.append({"role": "user", "content": user_message})

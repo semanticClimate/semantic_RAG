@@ -8,18 +8,18 @@
 <style>
   :root {
     --ca-red:    #c8282e;
-    --ca-cream:  #e8c9a8;
-    --ca-steel:  #7bacc8;
-    --ca-navy:   #1a2d45;
-    --ca-dark:   #0d1b2a;
-    --ca-darker: #08111d;
-    --ca-mid:    #162438;
-    --ca-panel:  #1e3150;
-    --ca-border: #2d4a6a;
-    --ca-muted:  #7a9ab8;
-    --ca-text:   #dce8f0;
-    --ca-user:   #1f3f66;
-    --ca-bot:    #122035;
+    --ca-cream:  #d4a96a;
+    --ca-steel:  #3a9bc4;
+    --ca-navy:   #1a4a6e;
+    --ca-dark:   #f0e8de;
+    --ca-darker: #faf4ee;
+    --ca-mid:    #e8ddd2;
+    --ca-panel:  #ddd0c4;
+    --ca-border: #c4b5a8;
+    --ca-muted:  #7a6a5a;
+    --ca-text:   #2a1f18;
+    --ca-user:   #cce4f5;
+    --ca-bot:    #f5efe8;
     --sidebar-w: 268px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -37,8 +37,8 @@
     content: '';
     position: fixed; inset: 0;
     background:
-      radial-gradient(ellipse 60% 50% at 0% 110%, rgba(123,172,200,0.12) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 45% at 105% -5%, rgba(200,40,46,0.14) 0%, transparent 55%);
+      radial-gradient(ellipse 60% 50% at 0% 110%, rgba(58,155,196,0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 45% at 105% -5%, rgba(200,40,46,0.08) 0%, transparent 55%);
     pointer-events: none; z-index: 0;
   }
 
@@ -115,6 +115,7 @@
   .chat-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
   .chat-list::-webkit-scrollbar { width: 3px; }
   .chat-list::-webkit-scrollbar-thumb { background: var(--ca-border); border-radius: 3px; }
+  #chat::-webkit-scrollbar-thumb { background: var(--ca-border); border-radius: 4px; }
 
   .chat-list-label {
     font-family: 'IBM Plex Mono', monospace;
@@ -184,7 +185,7 @@
     letter-spacing: 0.1em; white-space: nowrap;
   }
   select {
-    flex: 1; background: var(--ca-mid); color: var(--ca-text);
+    flex: 1; background: #fff; color: var(--ca-text);
     border: 1px solid var(--ca-border); border-radius: 5px;
     padding: 5px 8px; font-size: 0.78rem;
     font-family: 'Barlow', sans-serif; cursor: pointer; outline: none;
@@ -195,12 +196,21 @@
   #main { flex: 1; display: flex; flex-direction: column; position: relative; z-index: 1; min-width: 0; }
 
   #topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 22px; height: 52px;
-    background: var(--ca-dark);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 22px; height: 56px;
+    background: var(--ca-darker);
     border-bottom: 1px solid var(--ca-border);
     z-index: 5; position: relative;
   }
+  .topbar-center {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ca-topbar-logo {
+    height: 34px; width: auto; display: block;
+  }
+  .topbar-right { justify-content: flex-end; }
   .topbar-left { display: flex; align-items: center; gap: 10px; }
   .topbar-bars { display: flex; flex-direction: column; gap: 3px; }
   .topbar-bars span { display: block; height: 2px; border-radius: 1px; }
@@ -340,12 +350,12 @@
     max-width: 640px; font-weight: 400;
   }
   .msg.user .bubble {
-    background: var(--ca-user); border: 1px solid #3e6a99;
+    background: var(--ca-user); border: 1px solid #8cc8e8;
     border-bottom-right-radius: 2px; color: var(--ca-text);
   }
   .msg.bot .bubble {
     background: var(--ca-bot); border: 1px solid var(--ca-border);
-    border-bottom-left-radius: 2px; border-left: 3px solid var(--ca-red);
+    border-bottom-left-radius: 2px; border-left: 3px solid var(--ca-steel);
   }
 
   /* Typing dots (shown while polling) */
@@ -372,6 +382,34 @@
     background: rgba(200,40,46,0.07);
   }
 
+  /* ── Source pills ── */
+  .source-row {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid rgba(45,74,106,0.6);
+  }
+  .source-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem; color: var(--ca-muted);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    align-self: center; white-space: nowrap;
+  }
+  .source-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--ca-mid); border: 1px solid var(--ca-border);
+    border-radius: 4px; padding: 3px 9px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem; color: var(--ca-steel);
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .source-pill .pill-dot {
+    width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0;
+  }
+  .source-pill.src-book   { border-color: rgba(123,172,200,0.4); }
+  .source-pill.src-book   .pill-dot { background: var(--ca-steel); }
+  .source-pill.src-enc    { border-color: rgba(232,201,168,0.4); color: var(--ca-cream); }
+  .source-pill.src-enc    .pill-dot { background: var(--ca-cream); }
+
   /* ── Footer / Input ── */
   #footer {
     padding: 14px 22px 16px;
@@ -381,8 +419,8 @@
 
   .input-row {
     display: flex; gap: 10px; align-items: flex-end;
-    background: var(--ca-mid); border: 1px solid var(--ca-border);
-    border-radius: 8px; padding: 10px 13px; transition: border-color .2s;
+    background: #fff; border: 1px solid var(--ca-border);
+    border-radius: 8px; padding: 10px 13px; transition: border-color .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
   .input-row:focus-within { border-color: var(--ca-steel); }
 
@@ -393,7 +431,7 @@
     line-height: 1.5; max-height: 110px; min-height: 22px;
     overflow-y: auto; font-weight: 400;
   }
-  textarea::placeholder { color: var(--ca-muted); }
+  textarea::placeholder { color: #aaa; }
 
   .send-btn {
     width: 36px; height: 36px; border-radius: 6px;
@@ -448,6 +486,118 @@
     .input-row { padding: 8px 10px; }
     textarea { font-size: 0.86rem; }
   }
+
+  /* ══ SEMANTIC LOGO in sidebar ══ */
+  .sidebar-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--ca-border);
+    background: var(--ca-darker);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .semantic-logo {
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+    display: block;
+  }
+
+  /* ══ LANG BLOCK below logo ══ */
+  .sidebar-lang-block {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--ca-border);
+    background: var(--ca-darker);
+  }
+  .lang-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem; color: var(--ca-muted);
+    letter-spacing: 0.1em; white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .sidebar-lang-block select {
+    flex: 1;
+  }
+
+  /* ══ SIDEBAR FOOTER NOTE ══ */
+  .sidebar-footer-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem; color: var(--ca-muted);
+    letter-spacing: 0.08em; text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* ══ LIGHT THEME OVERRIDES ══ */
+  .logo-mark { background: var(--ca-panel); border-color: var(--ca-border); }
+  .new-chat-btn { color: var(--ca-text); }
+  .new-chat-btn:hover { background: var(--ca-mid); }
+  .chat-item-name { color: var(--ca-muted); }
+  .chat-item.active .chat-item-name { color: var(--ca-text); }
+  #topbar { background: var(--ca-darker); border-color: var(--ca-border); }
+  #footer { background: var(--ca-darker); }
+  #sidebar { background: var(--ca-dark); border-color: var(--ca-border); }
+  .sidebar-footer { background: var(--ca-darker); }
+  .bubble { color: var(--ca-text); }
+  .msg.bot .bubble { background: var(--ca-bot); }
+  .msg.user .bubble { background: var(--ca-user); color: #1a4a6e; }
+  .source-pill { background: #e8f4fb; color: var(--ca-steel); border-color: #b8d8ee; }
+  .source-pill.src-enc { background: #fdf3e7; color: #8a5a1a; border-color: #e8c898; }
+  .chip { background: #fff; border-color: var(--ca-border); color: var(--ca-text); }
+  .chip:hover { border-color: var(--ca-steel); background: #e8f4fb; color: var(--ca-steel); }
+  .welcome-tagline { color: var(--ca-muted); }
+  #topbar-title { color: var(--ca-text); }
+  #statusLabel { color: var(--ca-muted); }
+  textarea { color: var(--ca-text); }
+  .icon-btn { color: var(--ca-muted); }
+  .icon-btn:hover { color: var(--ca-steel); background: var(--ca-mid); }
+  .btn-ghost { color: var(--ca-muted); border-color: var(--ca-border); }
+  .btn-ghost:hover { color: var(--ca-steel); border-color: var(--ca-steel); }
+  .footer-hint { color: var(--ca-muted); }
+  .poll-status { color: var(--ca-muted); }
+  .welcome-divider::before, .welcome-divider::after { background: var(--ca-border); }
+  .welcome-divider span { color: var(--ca-muted); }
+  .source-label { color: var(--ca-muted); }
+  .chat-list-label { color: var(--ca-muted); }
+  .no-chats { color: var(--ca-muted); }
+  .welcome h2 { color: var(--ca-text); }
+
+
+  /* ══ CA TEXT LOGO in topbar ══ */
+  .ca-text-logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--ca-text);
+    line-height: 1;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+
+  /* ══ BAR-E SVG logo mark ══ */
+  .bar-e-wrap {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 1px;
+    position: relative;
+    top: -1px;
+  }
+  .bar-e {
+    display: block;
+    width: 18px;
+    height: auto;
+  }
+  .bar-e-wrap.bar-e-sm .bar-e {
+    width: 12px;
+  }
+  .bar-e-wrap.bar-e-lg .bar-e {
+    width: 26px;
+  }
+
 </style>
 </head>
 <body>
@@ -455,13 +605,20 @@
 <!-- ════ SIDEBAR ════ -->
 <div id="sidebar">
   <div class="sidebar-header">
-    <div class="logo-mark">
-      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-    </div>
-    <div class="logo-wordmark">
-      <div class="name">CLIMAT<span class="eq">E</span>ACAD<span class="eq">E</span>MY</div>
-      <div class="sub">RAG Chatbot</div>
-    </div>
+    <img src="/static/semantic_logo.png" alt="#semanticClimate logo" class="semantic-logo" />
+  </div>
+  <div class="sidebar-lang-block">
+    <label class="lang-label">LANG</label>
+    <select id="langSelect">
+      <option value="English">🇬🇧 English</option>
+      <option value="Hindi">🇮🇳 Hindi</option>
+      <option value="French">🇫🇷 French</option>
+      <option value="Arabic">🇸🇦 Arabic</option>
+      <option value="Spanish">🇪🇸 Spanish</option>
+      <option value="German">🇩🇪 German</option>
+      <option value="Portuguese">🇧🇷 Portuguese</option>
+      <option value="Mandarin">🇨🇳 Mandarin</option>
+    </select>
   </div>
 
   <button class="new-chat-btn" onclick="newChat()">
@@ -475,19 +632,7 @@
   </div>
 
   <div class="sidebar-footer">
-    <div class="lang-row">
-      <label>LANG</label>
-      <select id="langSelect">
-        <option value="English">🇬🇧 English</option>
-        <option value="Hindi">🇮🇳 Hindi</option>
-        <option value="French">🇫🇷 French</option>
-        <option value="Arabic">🇸🇦 Arabic</option>
-        <option value="Spanish">🇪🇸 Spanish</option>
-        <option value="German">🇩🇪 German</option>
-        <option value="Portuguese">🇧🇷 Portuguese</option>
-        <option value="Mandarin">🇨🇳 Mandarin</option>
-      </select>
-    </div>
+    <div class="sidebar-footer-note">#semanticClimate</div>
   </div>
 </div>
 
@@ -496,7 +641,10 @@
   <div id="topbar">
     <div class="topbar-left">
       <div class="topbar-bars"><span></span><span></span><span></span></div>
-      <div id="topbar-title">Climate Academy</div>
+      <div id="topbar-title"></div>
+    </div>
+    <div class="topbar-center">
+      <div class="ca-text-logo">CLIMAT<span class="bar-e-wrap" aria-label="E"><svg class="bar-e" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#B91A1B"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#DC8464"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#F3D4B6"/></svg></span>ACAD<span class="bar-e-wrap" aria-label="E"><svg class="bar-e" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#94BEE2"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#2A75BC"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#00397B"/></svg></span>MY</div>
     </div>
     <div class="topbar-right">
       <div class="status-indicator">
@@ -512,7 +660,7 @@
       <div class="welcome-logo">
         <div class="welcome-bars"><span></span><span></span><span></span></div>
       </div>
-      <h2>CLIMAT<span class="eq">E</span>ACAD<span class="eq">E</span>MY<br>
+      <h2>CLIMAT<span class="bar-e-wrap bar-e-lg" aria-label="E"><svg class="bar-e" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#B91A1B"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#DC8464"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#F3D4B6"/></svg></span>ACAD<span class="bar-e-wrap" aria-label="E"><svg class="bar-e" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#94BEE2"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#2A75BC"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#00397B"/></svg></span>MY<br>
         <span class="sub-accent" style="font-size:0.7em;letter-spacing:0.15em;font-weight:600;">CHATBOT</span>
       </h2>
       <p class="welcome-tagline">Climate education for system change. Ask anything grounded in the Climate Academy's in-depth science and social analysis.</p>
@@ -702,7 +850,7 @@ function renderChatArea() {
         <div class="welcome-logo">
           <div class="welcome-bars"><span></span><span></span><span></span></div>
         </div>
-        <h2>CLIMAT<span class="eq">E</span>ACAD<span class="eq">E</span>MY<br>
+        <h2>CLIMAT<span class="bar-e-wrap bar-e-lg" aria-label="E"><svg class="bar-e bar-e-lg" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#c8282e"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#d4a96a"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#3a9bc4"/></svg></span>ACAD<span class="bar-e-wrap bar-e-lg" aria-label="E"><svg class="bar-e bar-e-lg" viewBox="0 0 28 22" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0"  width="28" height="6"  rx="1" fill="#c8282e"/><rect x="0" y="8"  width="22" height="6"  rx="1" fill="#d4a96a"/><rect x="0" y="16" width="28" height="6"  rx="1" fill="#3a9bc4"/></svg></span>MY<br>
           <span class="sub-accent" style="font-size:0.7em;letter-spacing:0.15em;font-weight:600;color:#7bacc8;">CHATBOT</span>
         </h2>
         <p class="welcome-tagline">${chat ? 'Ask your first question about the Climate Academy book.' : 'Select a chat from the sidebar or start a new conversation.'}</p>
@@ -719,7 +867,7 @@ function renderChatArea() {
   }
   chat.messages.forEach((m, i) => {
     addUserBubble(m.q, chatEl);
-    addBotBubble(m.a, chatEl);
+    addBotBubble(m.a, chatEl, m.sources || []);
   });
   chatEl.scrollTop = chatEl.scrollHeight;
 }
@@ -734,7 +882,42 @@ function addUserBubble(text, container) {
   container.appendChild(d);
 }
 
-function addBotBubble(text, container) {
+function buildSourcePills(sources) {
+  if (!sources || !sources.length) return '';
+  const seen = new Set();
+  const pills = [];
+  for (const s of sources) {
+    const type = s.source_type || 'book';
+
+    let label, key;
+    if (type === 'book') {
+      // "Ch.3 · Spaceship Earth"
+      const chNum   = s.chapter_number ? `Ch.${s.chapter_number}` : '';
+      const chTitle = s.chapter_title  || s.section_title || '';
+      label = chNum && chTitle ? `${chNum} \u00b7 ${chTitle}` : chNum || chTitle || s.section_number;
+      key   = `book__${s.chapter_number}__${s.section_number}`;
+    } else {
+      // encyclopedia: show the term
+      label = s.term || s.section_title || s.section_number;
+      key   = `enc__${s.section_number}`;
+    }
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const cls     = type === 'book' ? 'src-book' : 'src-enc';
+    const typeTag = type === 'book' ? 'BOOK' : 'ENC';
+    pills.push(
+      `<span class="source-pill ${cls}" title="${esc(typeTag + ' \u00b7 ' + s.section_number)}">` +
+        `<span class="pill-dot"></span>${esc(label)}` +
+      `</span>`
+    );
+  }
+  if (!pills.length) return '';
+  return `<div class="source-row"><span class="source-label">Sources</span>${pills.join('')}</div>`;
+}
+
+function addBotBubble(text, container, sources) {
   const d = document.createElement('div');
   d.className = 'msg bot';
   d.innerHTML = `
@@ -743,6 +926,7 @@ function addBotBubble(text, container) {
     </div>
     <div class="bubble">
       ${md(text)}
+      ${buildSourcePills(sources)}
     </div>`;
   container.appendChild(d);
 }
@@ -854,6 +1038,7 @@ async function sendMessage() {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   let answerText = '';
+  let answerSources = [];
   try {
     // ── Step 1: POST /chat ──────────────────────────────────────────
     const chatRes = await fetch(`${base()}/chat`, {
@@ -875,8 +1060,9 @@ async function sendMessage() {
     const { task_id } = await chatRes.json();
 
     // ── Step 2: Poll /result/<task_id> ──────────────────────────────
-    const result = await pollResult(task_id);
-    answerText   = result.answer  || '';
+    const result  = await pollResult(task_id);
+    answerText    = result.answer  || '';
+    answerSources = result.sources || [];
   } catch (err) {
     answerText = `Could not get a response: ${err.message}`;
     // Mark bubble as error style
@@ -888,10 +1074,10 @@ async function sendMessage() {
   const typingMsg = document.getElementById('typingMsg');
   if (typingMsg) typingMsg.remove();
 
-  addBotBubble(answerText, chatEl);
+  addBotBubble(answerText, chatEl, answerSources);
 
   // Save to in-memory chat history
-  chat.messages.push({ q: query, a: answerText });
+  chat.messages.push({ q: query, a: answerText, sources: answerSources });
   document.getElementById('downloadBtn').style.display = 'inline-block';
 
   // Unlock UI

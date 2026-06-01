@@ -60,23 +60,35 @@ def process_chat(self, session_id: str, user_message: str, language: str = "Engl
     except Exception as e:
         logger.warning(f"Could not save turn to session {session_id}: {e}")
 
-    sources = [
-        {
-            "section_number": p["section_number"],
-            "section_title":  p["section_title"]
-        }
-        for p in passages
-    ]
+    sources = []
+    seen_keys = set()
+    for p in passages:
+        source_type = p.get("source_type", "book")
 
-# Only return sources if chunks were within threshold (not fallback results)
-# sources = [
-#     {
-#         "section_number": p["section_number"],
-#         "section_title":  p["section_title"]
-#     }
-#     for p in passages
-#     if p["distance"] < Config.DISTANCE_THRESHOLD
-# ]
+        if source_type == "book":
+            # Deduplicate by chapter so the same chapter doesn't appear twice
+            key = f"book__{p.get('chapter_number', '')}_{p.get('section_number', '')}"
+        else:
+            # Deduplicate encyclopedia entries by term/section
+            key = f"enc__{p.get('section_number', '')}"
+
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+
+        entry = {
+            "source_type":    source_type,
+            "section_number": p["section_number"],
+            "section_title":  p["section_title"],
+        }
+
+        if source_type == "book":
+            entry["chapter_number"] = p.get("chapter_number", "")
+            entry["chapter_title"]  = p.get("chapter_title", "")
+        else:
+            entry["term"] = p.get("term", p["section_title"])
+
+        sources.append(entry)
 
     logger.info(f"Task complete - session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
     return {"status": "done", "answer": answer, "sources": sources}
