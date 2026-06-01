@@ -3,7 +3,7 @@ services:
     name: climate-rag-backend
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python ingest.py
+    buildCommand: pip install -r requirements.txt
     startCommand: bash start.sh
     envVars:
       - key: FLASK_DEBUG

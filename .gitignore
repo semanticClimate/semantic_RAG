@@ -17,7 +17,6 @@ instance/
 # Databases (if using SQLite)
 *.sqlite3
 *.db
-chroma_db/
 
 # Distribution / Build
 dist/
