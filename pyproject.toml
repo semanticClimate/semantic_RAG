@@ -15,7 +15,6 @@ dependencies = [
     "httpx>=0.28.1",
     "ollama>=0.6.2",
     "redis>=7.4.0",
-    "sentence-transformers>=5.4.1",
 ]
 
 [dependency-groups]
