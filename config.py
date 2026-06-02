@@ -20,6 +20,9 @@ class Config:
     EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     BEDROCK_EMBEDDING_MODEL = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0")
     BEDROCK_EMBEDDING_DIMENSIONS = int(os.getenv("BEDROCK_EMBEDDING_DIMENSIONS", 1024))
+    BEDROCK_EMBEDDING_RETRIES = int(os.getenv("BEDROCK_EMBEDDING_RETRIES", 10))
+    BEDROCK_EMBEDDING_BASE_DELAY = float(os.getenv("BEDROCK_EMBEDDING_BASE_DELAY", 1.0))
+    BEDROCK_EMBEDDING_SLEEP = float(os.getenv("BEDROCK_EMBEDDING_SLEEP", 0.2))
 
     # Ollama
     LLM_PROVIDER       = os.getenv("LLM_PROVIDER", "ollama").strip().lower()

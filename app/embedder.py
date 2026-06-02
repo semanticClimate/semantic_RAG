@@ -1,4 +1,6 @@
 import json
+import random
+import time
 
 from config import Config
 from app.logger import get_logger
@@ -59,24 +61,40 @@ def embed(text: str) -> list[float]:
 
 
 def _embed_with_bedrock(text: str) -> list[float]:
-    try:
-        client = get_bedrock_client()
-        response = client.invoke_model(
-            modelId=Config.BEDROCK_EMBEDDING_MODEL,
-            body=json.dumps(
-                {
-                    "inputText": text,
-                    "dimensions": Config.BEDROCK_EMBEDDING_DIMENSIONS,
-                    "normalize": True,
-                }
-            ),
-            contentType="application/json",
-            accept="application/json",
-        )
-        payload = json.loads(response["body"].read())
-        vector = payload["embedding"]
-        logger.debug(f"Embedded text with Bedrock ({len(text)} chars) -> vector dim {len(vector)}")
-        return vector
-    except Exception as e:
-        logger.error(f"Bedrock embedding failed: {e}")
-        raise RuntimeError(f"Bedrock embedding failed: {e}") from e
+    client = get_bedrock_client()
+    body = json.dumps(
+        {
+            "inputText": text,
+            "dimensions": Config.BEDROCK_EMBEDDING_DIMENSIONS,
+            "normalize": True,
+        }
+    )
+
+    for attempt in range(1, Config.BEDROCK_EMBEDDING_RETRIES + 1):
+        try:
+            response = client.invoke_model(
+                modelId=Config.BEDROCK_EMBEDDING_MODEL,
+                body=body,
+                contentType="application/json",
+                accept="application/json",
+            )
+            payload = json.loads(response["body"].read())
+            vector = payload["embedding"]
+            logger.debug(f"Embedded text with Bedrock ({len(text)} chars) -> vector dim {len(vector)}")
+            if Config.BEDROCK_EMBEDDING_SLEEP > 0:
+                time.sleep(Config.BEDROCK_EMBEDDING_SLEEP)
+            return vector
+        except Exception as e:
+            error_name = e.__class__.__name__
+            is_throttled = "Throttling" in error_name or "Too many requests" in str(e)
+            if not is_throttled or attempt >= Config.BEDROCK_EMBEDDING_RETRIES:
+                logger.error(f"Bedrock embedding failed: {e}")
+                raise RuntimeError(f"Bedrock embedding failed: {e}") from e
+
+            delay = min(Config.BEDROCK_EMBEDDING_BASE_DELAY * (2 ** (attempt - 1)), 60)
+            delay += random.uniform(0, 0.5)
+            logger.warning(
+                f"Bedrock embedding throttled; retry {attempt}/"
+                f"{Config.BEDROCK_EMBEDDING_RETRIES} in {delay:.1f}s"
+            )
+            time.sleep(delay)
