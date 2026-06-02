@@ -32,8 +32,10 @@ class Config:
     # AWS Bedrock
     AWS_REGION         = os.getenv("AWS_REGION", "us-east-1")
     BEDROCK_CHAT_MODEL = os.getenv("BEDROCK_CHAT_MODEL", "anthropic.claude-3-haiku-20240307-v1:0")
-    BEDROCK_MAX_TOKENS = int(os.getenv("BEDROCK_MAX_TOKENS", 1000))
+    BEDROCK_MAX_TOKENS = int(os.getenv("BEDROCK_MAX_TOKENS", 500))
     BEDROCK_TEMPERATURE = float(os.getenv("BEDROCK_TEMPERATURE", 0.3))
+    BEDROCK_CHAT_RETRIES = int(os.getenv("BEDROCK_CHAT_RETRIES", 8))
+    BEDROCK_CHAT_BASE_DELAY = float(os.getenv("BEDROCK_CHAT_BASE_DELAY", 2.0))
 
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))

@@ -1,5 +1,7 @@
 import ollama
 import httpx
+import random
+import time
 from config import Config
 from app.logger import get_logger
 
@@ -154,20 +156,38 @@ def _generate_with_bedrock(
         f"{passage_count} passages, {len(history)} history messages"
     )
 
-    try:
-        client = get_bedrock_client()
-        response = client.converse(
-            modelId=Config.BEDROCK_CHAT_MODEL,
-            system=[{"text": system_prompt}],
-            messages=_to_bedrock_messages(history, user_message),
-            inferenceConfig={
-                "maxTokens": Config.BEDROCK_MAX_TOKENS,
-                "temperature": Config.BEDROCK_TEMPERATURE,
-            },
-        )
-        answer = response["output"]["message"]["content"][0]["text"]
-        logger.info(f"Bedrock responded - {len(answer)} chars generated")
-        return answer
-    except Exception as e:
-        logger.error(f"Bedrock LLM call failed: {e}")
-        raise RuntimeError(f"Bedrock LLM call failed: {e}") from e
+    client = get_bedrock_client()
+    messages = _to_bedrock_messages(history, user_message)
+
+    for attempt in range(1, Config.BEDROCK_CHAT_RETRIES + 1):
+        try:
+            response = client.converse(
+                modelId=Config.BEDROCK_CHAT_MODEL,
+                system=[{"text": system_prompt}],
+                messages=messages,
+                inferenceConfig={
+                    "maxTokens": Config.BEDROCK_MAX_TOKENS,
+                    "temperature": Config.BEDROCK_TEMPERATURE,
+                },
+            )
+            answer = response["output"]["message"]["content"][0]["text"]
+            logger.info(f"Bedrock responded - {len(answer)} chars generated")
+            return answer
+        except Exception as e:
+            error_name = e.__class__.__name__
+            is_throttled = (
+                "Throttling" in error_name
+                or "Too many" in str(e)
+                or "please wait" in str(e).lower()
+            )
+            if not is_throttled or attempt >= Config.BEDROCK_CHAT_RETRIES:
+                logger.error(f"Bedrock LLM call failed: {e}")
+                raise RuntimeError(f"Bedrock LLM call failed: {e}") from e
+
+            delay = min(Config.BEDROCK_CHAT_BASE_DELAY * (2 ** (attempt - 1)), 60)
+            delay += random.uniform(0, 0.5)
+            logger.warning(
+                f"Bedrock chat throttled; retry {attempt}/"
+                f"{Config.BEDROCK_CHAT_RETRIES} in {delay:.1f}s"
+            )
+            time.sleep(delay)
