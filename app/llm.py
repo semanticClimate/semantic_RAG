@@ -4,6 +4,7 @@ from config import Config
 from app.logger import get_logger
 
 logger = get_logger(__name__)
+_bedrock_client = None
 
 
 def _format_passage(p: dict) -> str:
@@ -70,6 +71,12 @@ def generate(
     messages += history
     messages.append({"role": "user", "content": user_message})
 
+    if Config.LLM_PROVIDER == "bedrock":
+        return _generate_with_bedrock(system_prompt, history, user_message, len(passages))
+
+    if Config.LLM_PROVIDER != "ollama":
+        raise RuntimeError("Unsupported LLM_PROVIDER. Use 'ollama' or 'bedrock'.")
+
     logger.info(
         f"Calling Ollama model '{Config.OLLAMA_MODEL}' at {Config.OLLAMA_BASE_URL} - "
         f"{len(passages)} passages, {len(history)} history messages"
@@ -111,3 +118,56 @@ def generate(
     except Exception as e:
         logger.error(f"Unexpected error calling Ollama: {e}")
         raise RuntimeError(f"LLM call failed: {e}") from e
+
+
+def get_bedrock_client():
+    global _bedrock_client
+    if _bedrock_client is None:
+        logger.info(f"Creating Bedrock Runtime client in {Config.AWS_REGION}")
+        import boto3
+
+        _bedrock_client = boto3.client("bedrock-runtime", region_name=Config.AWS_REGION)
+    return _bedrock_client
+
+
+def _to_bedrock_messages(history: list[dict], user_message: str) -> list[dict]:
+    bedrock_messages = []
+    for message in history:
+        role = message.get("role")
+        content = message.get("content", "")
+        if role not in {"user", "assistant"} or not content:
+            continue
+        bedrock_messages.append({"role": role, "content": [{"text": content}]})
+
+    bedrock_messages.append({"role": "user", "content": [{"text": user_message}]})
+    return bedrock_messages
+
+
+def _generate_with_bedrock(
+    system_prompt: str,
+    history: list[dict],
+    user_message: str,
+    passage_count: int,
+) -> str:
+    logger.info(
+        f"Calling Bedrock model '{Config.BEDROCK_CHAT_MODEL}' in {Config.AWS_REGION} - "
+        f"{passage_count} passages, {len(history)} history messages"
+    )
+
+    try:
+        client = get_bedrock_client()
+        response = client.converse(
+            modelId=Config.BEDROCK_CHAT_MODEL,
+            system=[{"text": system_prompt}],
+            messages=_to_bedrock_messages(history, user_message),
+            inferenceConfig={
+                "maxTokens": Config.BEDROCK_MAX_TOKENS,
+                "temperature": Config.BEDROCK_TEMPERATURE,
+            },
+        )
+        answer = response["output"]["message"]["content"][0]["text"]
+        logger.info(f"Bedrock responded - {len(answer)} chars generated")
+        return answer
+    except Exception as e:
+        logger.error(f"Bedrock LLM call failed: {e}")
+        raise RuntimeError(f"Bedrock LLM call failed: {e}") from e

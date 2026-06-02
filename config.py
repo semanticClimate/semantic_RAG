@@ -16,11 +16,21 @@ class Config:
     CHROMA_COLLECTION  = os.getenv("CHROMA_COLLECTION", "climate_academy")
 
     # Embedding
+    EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "sentence_transformers").strip().lower()
     EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    BEDROCK_EMBEDDING_MODEL = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0")
+    BEDROCK_EMBEDDING_DIMENSIONS = int(os.getenv("BEDROCK_EMBEDDING_DIMENSIONS", 1024))
 
     # Ollama
+    LLM_PROVIDER       = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+
+    # AWS Bedrock
+    AWS_REGION         = os.getenv("AWS_REGION", "us-east-1")
+    BEDROCK_CHAT_MODEL = os.getenv("BEDROCK_CHAT_MODEL", "anthropic.claude-3-haiku-20240307-v1:0")
+    BEDROCK_MAX_TOKENS = int(os.getenv("BEDROCK_MAX_TOKENS", 1000))
+    BEDROCK_TEMPERATURE = float(os.getenv("BEDROCK_TEMPERATURE", 0.3))
 
     # Chunking
     CHUNK_SIZE         = int(os.getenv("CHUNK_SIZE", 150))
