@@ -6,7 +6,8 @@ from app.logger import get_logger
 logger = get_logger(__name__)
 
 def create_app():
-    app = Flask(__name__)
+    static_dir = Path(__file__).resolve().parent.parent / "static"
+    app = Flask(__name__, static_folder=static_dir, static_url_path="/static")
     app.config.from_object(Config)
 
     CORS(app)

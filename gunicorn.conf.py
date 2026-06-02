@@ -3,7 +3,7 @@ import multiprocessing
 from config import Config
 
 # Socket — Nginx talks to Gunicorn through this file
-bind            = "unix:/tmp/climate-rag.sock"
+bind            = "0.0.0.0:8000"
 
 # Workers — standard formula is (2 × CPU cores) + 1
 # For a server with 4 cores this gives 9, but cap at 4 for our workload
@@ -18,8 +18,8 @@ keepalive       = 5              # keep connection alive for 5s between requests
 graceful_timeout = 30            # time given to finish in-flight requests on shutdown
 
 # Logging
-accesslog       = "/var/log/climate-rag/access.log"
-errorlog        = "/var/log/climate-rag/error.log"
+accesslog       = "/mnt/d/semantic-RAG/semantic_RAG/logs/climate-rag/access.log"
+errorlog        = "/mnt/d/semantic-RAG/semantic_RAG/logs/climate-rag/error.log"
 loglevel        = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sµs'
 
