@@ -22,6 +22,7 @@ class Config:
     LLM_PROVIDER        = os.getenv("LLM_PROVIDER", "auto").strip().lower()
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+    OLLAMA_API_KEY     = os.getenv("OLLAMA_API_KEY", "")   # Required for Ollama Cloud
 
     # Grok / xAI
     GROK_API_KEY       = os.getenv("GROK_API_KEY") or os.getenv("XAI_API_KEY")

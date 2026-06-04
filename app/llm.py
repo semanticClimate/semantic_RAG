@@ -85,11 +85,18 @@ def generate(
     if provider == "grok":
         return _generate_with_grok(messages)
 
+    # Ollama: system prompt + current message only — no history — to keep tokens low.
+    # Grok keeps the full messages list (with history) built above.
+    ollama_messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": user_message},
+    ]
+
     if provider == "ollama":
-        return _generate_with_ollama(messages, len(passages), len(history))
+        return _generate_with_ollama(ollama_messages, len(passages), len(history))
 
     try:
-        return _generate_with_ollama(messages, len(passages), len(history))
+        return _generate_with_ollama(ollama_messages, len(passages), len(history))
     except RuntimeError as e:
         if not Config.GROK_API_KEY:
             raise
@@ -105,7 +112,10 @@ def _generate_with_ollama(messages: list[dict], passage_count: int, history_coun
     )
 
     try:
-        client = ollama.Client(host=Config.OLLAMA_BASE_URL)
+        client_kwargs = {"host": Config.OLLAMA_BASE_URL}
+        if Config.OLLAMA_API_KEY:
+            client_kwargs["headers"] = {"Authorization": f"Bearer {Config.OLLAMA_API_KEY}"}
+        client = ollama.Client(**client_kwargs)
         response = client.chat(
             model=Config.OLLAMA_MODEL,
             messages=messages,
