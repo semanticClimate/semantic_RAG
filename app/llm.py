@@ -133,6 +133,10 @@ def _generate_with_ollama(messages: list[dict], passage_count: int, history_coun
                 f"Model '{Config.OLLAMA_MODEL}' not found. "
                 f"Run: ollama pull {Config.OLLAMA_MODEL}"
             ) from e
+        if e.status_code == 524 or "timeout" in str(e.error).lower():
+            raise RuntimeError(
+                "AI is busy right now. Please try again in a minute."
+            ) from e
         raise RuntimeError(f"Ollama API error: {e.error}") from e
 
     except httpx.ConnectError as e:
@@ -145,7 +149,7 @@ def _generate_with_ollama(messages: list[dict], passage_count: int, history_coun
     except httpx.TimeoutException as e:
         logger.error(f"Ollama request timed out: {e}")
         raise RuntimeError(
-            "Ollama request timed out. The model may be overloaded - please try again."
+            "AI is busy right now. Please try again in a minute."
         ) from e
 
     except Exception as e:
