@@ -32,7 +32,7 @@ def process_chat(self, session_id: str, user_message: str, language: str = "Engl
 
     # Step 1 - Retrieve relevant passages
     try:
-        passages = retrieve(user_message)
+        passages = retrieve(user_message, language)
     except ValueError as e:
         logger.error(f"Invalid query in task: {e}")
         return {"status": "error", "answer": str(e), "sources": []}

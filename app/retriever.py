@@ -43,7 +43,50 @@ def get_collection():
     return _collection
 
 
-def retrieve(query: str) -> list[dict]:
+def _translate_to_english(query: str, language: str) -> str:
+    """
+    Translate a non-English query to English before embedding.
+    This is necessary because the embedding model indexes English passages,
+    so non-English queries produce mismatched vectors and miss relevant chunks.
+    Falls back to the original query if translation fails.
+    """
+    if language == "English":
+        return query
+
+    try:
+        import ollama
+        client_kwargs = {"host": Config.OLLAMA_BASE_URL}
+        if Config.OLLAMA_API_KEY:
+            client_kwargs["headers"] = {"Authorization": f"Bearer {Config.OLLAMA_API_KEY}"}
+        client = ollama.Client(**client_kwargs)
+        response = client.chat(
+            model=Config.OLLAMA_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Translate the following text to English. "
+                        "Output ONLY the English translation — no explanations, "
+                        "no notes, no punctuation changes."
+                    ),
+                },
+                {"role": "user", "content": query},
+            ],
+            options={"temperature": 0.0},
+        )
+        translated = response["message"]["content"].strip()
+        logger.info(f"Query translated ({language} → English): '{translated[:80]}'")
+        return translated
+
+    except Exception as e:
+        logger.warning(
+            f"Translation failed for language='{language}': {e} "
+            f"— embedding original query (retrieval may be weaker)"
+        )
+        return query  # non-fatal fallback
+
+
+def retrieve(query: str, language: str = "English") -> list[dict]:
     """
     Two-phase retrieval strategy:
 
@@ -72,9 +115,13 @@ def retrieve(query: str) -> list[dict]:
         else f"Retrieving chunks for query: '{query}'"
     )
 
+    # Translate to English before embedding — the corpus is in English,
+    # so non-English queries must be translated first to get matching vectors.
+    english_query = _translate_to_english(query, language)
+
     # Generate query embedding once — reused for both phases
     try:
-        query_vector = embed(query)
+        query_vector = embed(english_query)
     except RuntimeError as e:
         logger.error(f"Embedding failed during retrieval: {e}")
         raise
