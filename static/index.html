@@ -526,6 +526,23 @@
     text-transform: uppercase;
   }
 
+  /* ══ OKFN LOGO ══ */
+  .okfn-logo-wrap {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .okfn-logo {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    display: block;
+    opacity: 0.85;
+    transition: opacity 0.2s;
+  }
+  .okfn-logo:hover { opacity: 1; }
+
   /* ══ LIGHT THEME OVERRIDES ══ */
   .logo-mark { background: var(--ca-panel); border-color: var(--ca-border); }
   .new-chat-btn { color: var(--ca-text); }
@@ -633,6 +650,9 @@
 
   <div class="sidebar-footer">
     <div class="sidebar-footer-note">#semanticClimate</div>
+    <div class="okfn-logo-wrap">
+      <img src="/static/okfn_logo.png" alt="Open Knowledge logo" class="okfn-logo" />
+    </div>
   </div>
 </div>
 
