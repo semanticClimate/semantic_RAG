@@ -20,12 +20,14 @@ def translate_to_english(query: str, language: str) -> str:
         {
             "role": "system",
             "content": (
-                "Translate the following text to English. "
-                "Output ONLY the English translation - no explanations, "
-                "no notes, no punctuation changes."
+                "You are a translator. Your only job is to translate text into English. "
+                "Do NOT answer, explain, or interpret the text. "
+                "Do NOT add any information. "
+                "Output ONLY the English translation of the input, nothing else. "
+                "If the input is a question, translate the question as-is into English."
             ),
         },
-        {"role": "user", "content": query},
+        {"role": "user", "content": f"Translate this to English:\n{query}"},
     ]
 
     errors = []
@@ -73,15 +75,22 @@ def _translate_with_bedrock(messages: list[dict]) -> str:
     import boto3
 
     client = boto3.client("bedrock-runtime", region_name=Config.AWS_REGION)
+
+    system_text = messages[0]["content"]
+    user_text = messages[1]["content"]
+
+    # Llama does not honour the system= parameter in converse().
+    # Embed the system prompt directly into the user turn instead.
+    combined = f"{system_text}\n\n{user_text}"
+
     response = client.converse(
         modelId=Config.BEDROCK_MODEL_ID,
         messages=[
             {
                 "role": "user",
-                "content": [{"text": messages[1]["content"]}],
+                "content": [{"text": combined}],
             }
         ],
-        system=[{"text": messages[0]["content"]}],
         inferenceConfig={"temperature": 0.0, "maxTokens": 256},
     )
     return "".join(

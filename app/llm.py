@@ -83,11 +83,11 @@ def generate(
         provider = "auto"
 
     if provider == "bedrock":
-        return _generate_with_bedrock(system_prompt, history, user_message)
+        return _generate_with_bedrock(system_prompt, [], user_message)
 
     if provider == "auto" and Config.BEDROCK_MODEL_ID:
         try:
-            return _generate_with_bedrock(system_prompt, history, user_message)
+            return _generate_with_bedrock(system_prompt, [], user_message)
         except RuntimeError as e:
             logger.warning(f"Bedrock unavailable, falling back to Ollama: {e}")
 
