@@ -3,7 +3,7 @@ from config import Config
 from app.embedder import embed
 from app.logger import get_logger
 from app.book_facts import build_fact_passages, is_chapter_summary_query
-from app.query_router import route_query
+from app.query_router import route_query, is_metadata_candidate
 from app.translation import translate_to_english
 
 logger = get_logger(__name__)
@@ -81,14 +81,14 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
     logger.info(f"Retrieving chunks for query: '{query[:80]}...'" if len(query) > 80 else f"Retrieving chunks for query: '{query}'")
 
     english_query = translate_to_english(query, language)
-    route = route_query(english_query)
-    if route.get("route") == "metadata":
-        fact_passages = build_fact_passages(english_query, intent=route.get("intent") or None)
-        if fact_passages:
-            logger.info(f"Using metadata shortcut for query: '{query[:80]}'")
-            return fact_passages
+    if is_metadata_candidate(english_query):
+        route = route_query(english_query)
+        if route.get("route") == "metadata":
+            fact_passages = build_fact_passages(english_query, intent=route.get("intent") or None)
+            if fact_passages:
+                logger.info(f"Using metadata shortcut for query: '{query[:80]}'")
+                return fact_passages
 
-    english_query = translate_to_english(query, language)
     try:
         query_vector = embed(english_query)
     except RuntimeError as e:

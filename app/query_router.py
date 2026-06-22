@@ -23,6 +23,22 @@ METADATA_INTENTS = {
     "climate_academy_started",
 }
 
+_METADATA_HINTS = [
+    "chapter",
+    "chapters",
+    "chapter name",
+    "chapter list",
+    "author",
+    "who wrote",
+    "book title",
+    "title of the book",
+    "edition year",
+    "published",
+    "founded",
+    "started",
+    "climate academy",
+]
+
 
 def _normalize(text: str) -> str:
     text = (text or "").strip()
@@ -186,3 +202,10 @@ def route_query(query: str) -> dict:
 
     logger.info("Router fell back to retrieval")
     return {"route": "retrieval", "intent": "", "confidence": 0.0}
+
+
+def is_metadata_candidate(query: str) -> bool:
+    text = _normalize(query).lower()
+    if not text:
+        return False
+    return any(hint in text for hint in _METADATA_HINTS)
