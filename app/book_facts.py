@@ -42,6 +42,20 @@ _DEFAULT_BOOK_METADATA = {
 }
 
 
+def _merge_book_metadata(facts: dict | None) -> dict:
+    merged = {
+        "title": _DEFAULT_BOOK_METADATA["title"],
+        "author": _DEFAULT_BOOK_METADATA["author"],
+        "edition_year": _DEFAULT_BOOK_METADATA["edition_year"],
+        "license": _DEFAULT_BOOK_METADATA["license"],
+        "climate_academy_started": _DEFAULT_BOOK_METADATA["climate_academy_started"],
+        "chapters": _DEFAULT_BOOK_METADATA["chapters"],
+    }
+    if isinstance(facts, dict):
+        merged.update({k: v for k, v in facts.items() if v is not None})
+    return merged
+
+
 def _normalize_query(query: str) -> str:
     text = query.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
@@ -176,6 +190,7 @@ def _extract_chapters_from_html(html: str) -> list[dict]:
 def get_book_facts() -> dict:
     global _BOOK_FACTS
     if _BOOK_FACTS is not None:
+        _BOOK_FACTS = _merge_book_metadata(_BOOK_FACTS)
         return _BOOK_FACTS
 
     html_path = Path(Config.SOURCE_HTML_PATH)
@@ -184,10 +199,7 @@ def get_book_facts() -> dict:
 
     html = html_path.read_text(encoding="utf-8", errors="replace")
     soup = BeautifulSoup(html, "html.parser")
-    title = _DEFAULT_BOOK_METADATA["title"]
-    chapters = _DEFAULT_BOOK_METADATA["chapters"]
-
-    _BOOK_FACTS = {"title": title, "chapters": chapters}
+    _BOOK_FACTS = _merge_book_metadata(None)
     return _BOOK_FACTS
 
 
@@ -203,13 +215,13 @@ def build_fact_passages(query: str) -> list[dict]:
 
     if intent == "book_title":
         return [{
-            "document": f"The title of the book is {facts['title']}.",
+            "document": f"The title of the book is {facts.get('title', _DEFAULT_BOOK_METADATA['title'])}.",
             "source_type": "book",
             "section_number": "0.0",
             "section_title": "Book Title",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     if intent == "chapter_count":
@@ -220,7 +232,7 @@ def build_fact_passages(query: str) -> list[dict]:
             "section_title": "Chapter Count",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     if intent == "chapter_list":
@@ -232,40 +244,40 @@ def build_fact_passages(query: str) -> list[dict]:
             "section_title": "Chapter List",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     if intent == "author":
         return [{
-            "document": f"The author of the book is {facts['author']}.",
+            "document": f"The author of the book is {facts.get('author', _DEFAULT_BOOK_METADATA['author'])}.",
             "source_type": "book",
             "section_number": "0.3",
             "section_title": "Author",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     if intent == "edition_year":
         return [{
-            "document": f"The book edition year is {facts['edition_year']}.",
+            "document": f"The book edition year is {facts.get('edition_year', _DEFAULT_BOOK_METADATA['edition_year'])}.",
             "source_type": "book",
             "section_number": "0.4",
             "section_title": "Edition Year",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     if intent == "climate_academy_started":
         return [{
-            "document": f"The Climate Academy was founded in {facts['climate_academy_started']}.",
+            "document": f"The Climate Academy was founded in {facts.get('climate_academy_started', _DEFAULT_BOOK_METADATA['climate_academy_started'])}.",
             "source_type": "book",
             "section_number": "0.5",
             "section_title": "Climate Academy Founded",
             "distance": 0.0,
             "chapter_number": 0,
-            "chapter_title": facts["title"],
+            "chapter_title": facts.get("title", _DEFAULT_BOOK_METADATA["title"]),
         }]
 
     return []
