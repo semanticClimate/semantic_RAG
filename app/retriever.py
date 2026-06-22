@@ -1,7 +1,9 @@
 import chromadb
+import re
 from config import Config
 from app.embedder import embed
 from app.logger import get_logger
+from app.book_facts import build_fact_passages
 
 logger = get_logger(__name__)
 
@@ -54,27 +56,49 @@ def _translate_to_english(query: str, language: str) -> str:
         return query
 
     try:
-        import ollama
-        client_kwargs = {"host": Config.OLLAMA_BASE_URL}
-        if Config.OLLAMA_API_KEY:
-            client_kwargs["headers"] = {"Authorization": f"Bearer {Config.OLLAMA_API_KEY}"}
-        client = ollama.Client(**client_kwargs)
-        response = client.chat(
-            model=Config.OLLAMA_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Translate the following text to English. "
-                        "Output ONLY the English translation — no explanations, "
-                        "no notes, no punctuation changes."
-                    ),
-                },
-                {"role": "user", "content": query},
-            ],
-            options={"temperature": 0.0},
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Translate the following text to English. "
+                    "Output ONLY the English translation - no explanations, "
+                    "no notes, no punctuation changes."
+                ),
+            },
+            {"role": "user", "content": query},
+        ]
+
+        use_bedrock = Config.LLM_PROVIDER == "bedrock" or (
+            Config.LLM_PROVIDER == "auto" and Config.BEDROCK_MODEL_ID
         )
-        translated = response["message"]["content"].strip()
+
+        if use_bedrock:
+            import boto3
+
+            client = boto3.client("bedrock-runtime", region_name=Config.AWS_REGION)
+            response = client.converse(
+                modelId=Config.BEDROCK_MODEL_ID,
+                messages=messages,
+                inferenceConfig={"temperature": 0.0, "maxTokens": 256},
+            )
+            translated = "".join(
+                block.get("text", "")
+                for block in response["output"]["message"]["content"]
+                if isinstance(block, dict)
+            ).strip()
+        else:
+            import ollama
+            client_kwargs = {"host": Config.OLLAMA_BASE_URL}
+            if Config.OLLAMA_API_KEY:
+                client_kwargs["headers"] = {"Authorization": f"Bearer {Config.OLLAMA_API_KEY}"}
+            client = ollama.Client(**client_kwargs)
+            response = client.chat(
+                model=Config.OLLAMA_MODEL,
+                messages=messages,
+                options={"temperature": 0.0},
+            )
+            translated = response["message"]["content"].strip()
+
         logger.info(f"Query translated ({language} → English): '{translated[:80]}'")
         return translated
 
@@ -115,6 +139,11 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
         else f"Retrieving chunks for query: '{query}'"
     )
 
+    fact_passages = build_fact_passages(query)
+    if fact_passages:
+        logger.info(f"Using book-facts shortcut for query: '{query[:80]}'")
+        return fact_passages
+
     # Translate to English before embedding — the corpus is in English,
     # so non-English queries must be translated first to get matching vectors.
     english_query = _translate_to_english(query, language)
@@ -125,6 +154,26 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
     except RuntimeError as e:
         logger.error(f"Embedding failed during retrieval: {e}")
         raise
+
+    chapter_match = re.search(
+        r"chapter\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen)",
+        query.lower(),
+    )
+    if chapter_match and any(
+        phrase in query.lower()
+        for phrase in ["summary of chapter", "summarize chapter", "chapter summary"]
+    ):
+        chapter_token = chapter_match.group(1)
+        chapter_number = int(chapter_token) if chapter_token.isdigit() else {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+            "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+            "fifteen": 15, "sixteen": 16,
+        }[chapter_token]
+        chapter_passages = retrieve_chapter_passages(query_vector, chapter_number)
+        if chapter_passages:
+            logger.info(f"Using chapter-scoped retrieval for Chapter {chapter_number}")
+            return chapter_passages
 
     # ── Phase 1: book chunks ──────────────────────────────────────────────────
     book_passages = _query_source(
@@ -195,6 +244,30 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
     )
 
     return passages
+
+
+def retrieve_chapter_passages(query_vector: list[float], chapter_number: int, n_results: int | None = None) -> list[dict]:
+    """Return passages from a specific book chapter for chapter summaries."""
+    try:
+        collection = get_collection()
+        results = collection.query(
+            query_embeddings=[query_vector],
+            n_results=n_results or Config.TOP_K * 3,
+            where={
+                "$and": [
+                    {"source_type": {"$eq": "book"}},
+                    {"chapter_number": {"$eq": chapter_number}},
+                ]
+            },
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception:
+        return []
+
+    docs = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+    return [_build_passage(doc, meta, dist) for doc, meta, dist in zip(docs, metadatas, distances)]
 
 
 def _query_source(

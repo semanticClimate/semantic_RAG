@@ -18,8 +18,16 @@ class Config:
     # Embedding
     EMBEDDING_MODEL    = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
-    # Ollama
+    # LLM provider
     LLM_PROVIDER        = os.getenv("LLM_PROVIDER", "auto").strip().lower()
+
+    # AWS Bedrock
+    AWS_REGION         = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+    BEDROCK_MODEL_ID   = os.getenv("BEDROCK_MODEL_ID", "meta.llama3-1-8b-instruct-v1:0")
+    BEDROCK_MAX_TOKENS = int(os.getenv("BEDROCK_MAX_TOKENS", 1024))
+    BEDROCK_TEMPERATURE = float(os.getenv("BEDROCK_TEMPERATURE", 0.3))
+
+    # Ollama
     OLLAMA_BASE_URL    = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL       = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
     OLLAMA_API_KEY     = os.getenv("OLLAMA_API_KEY", "")   # Required for Ollama Cloud

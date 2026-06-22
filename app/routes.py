@@ -2,6 +2,8 @@ from pathlib import Path
 from flask import Blueprint, request, jsonify, send_from_directory
 from app.session import create_session, delete_session, session_exists
 from app.tasks import process_chat
+from app.retriever import retrieve
+from app.book_facts import build_fact_passages
 from app.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,6 +23,26 @@ def index():
 @bp.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
+
+
+@bp.route("/debug/retrieval", methods=["GET"])
+def debug_retrieval():
+    query = request.args.get("q", "").strip()
+    language = request.args.get("language", "English").strip() or "English"
+
+    if not query:
+        return jsonify({"error": "missing_field", "message": "q is required"}), 400
+
+    fact_passages = build_fact_passages(query)
+    passages = fact_passages if fact_passages else retrieve(query, language)
+
+    return jsonify({
+        "query": query,
+        "language": language,
+        "used_fact_shortcut": bool(fact_passages),
+        "passage_count": len(passages),
+        "passages": passages,
+    }), 200
 
 
 @bp.route("/session", methods=["POST"])

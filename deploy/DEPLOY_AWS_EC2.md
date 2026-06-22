@@ -1,5 +1,5 @@
 # AWS EC2 Deployment Guide — Climate Academy RAG
-**Setup: EC2 Ubuntu 22.04 · Nginx · Gunicorn · Celery · Redis · Ollama Cloud**
+**Setup: EC2 Ubuntu 22.04 · Nginx · Gunicorn · Celery · Redis · AWS Bedrock**
 
 ---
 
@@ -9,7 +9,7 @@ Before starting, make sure:
 - [ ] You can SSH into your EC2 instance
 - [ ] Your EC2 Security Group has **port 80 open** (HTTP inbound from `0.0.0.0/0`)
 - [ ] Your EC2 Security Group has **port 22 open** (SSH)
-- [ ] You have your Ollama Cloud API key ready
+- [ ] You have AWS credentials with Bedrock access and `meta.llama3-1-8b-instruct-v1:0` enabled
 
 > **How to open port 80 on AWS:**
 > Go to EC2 → Instances → click your instance → Security tab → click the Security Group →
@@ -46,7 +46,7 @@ uv sync
 Quick check:
 
 ```bash
-uv run python -c "import flask, celery, redis, chromadb, ollama; print('All OK')"
+uv run python -c "import flask, celery, redis, chromadb, boto3; print('All OK')"
 ```
 
 ---
@@ -79,11 +79,12 @@ SECRET_KEY=change-this-to-a-long-random-string
 
 REDIS_URL=redis://localhost:6379/0
 
-# Ollama Cloud
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=https://api.ollama.com
-OLLAMA_MODEL=gpt-oss:20b
-OLLAMA_API_KEY=your-ollama-cloud-api-key-here
+# AWS Bedrock
+LLM_PROVIDER=bedrock
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=meta.llama3-1-8b-instruct-v1:0
+BEDROCK_MAX_TOKENS=1024
+BEDROCK_TEMPERATURE=0.3
 
 CHROMA_PATH=./chroma_db
 CHROMA_COLLECTION=climate_academy
@@ -340,5 +341,5 @@ sudo systemctl restart celery-climate
 | `502 Bad Gateway` | Gunicorn not running — check `journalctl -u gunicorn-climate` |
 | `curl /health` works but Nginx doesn't | Run `sudo nginx -t` and check `/etc/nginx/sites-enabled/` |
 | Celery not processing | Check `journalctl -u celery-climate` and Redis with `redis-cli ping` |
-| Ollama returns 401 | Wrong `OLLAMA_API_KEY` in `.env` |
+| Bedrock returns access denied | EC2 role/user lacks `bedrock:InvokeModel` permission or model access is not enabled |
 | Ollama returns 404 | Wrong `OLLAMA_MODEL` name — verify `gpt-oss:20b` is available on your plan |

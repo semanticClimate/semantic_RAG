@@ -9,7 +9,7 @@ A production-grade Retrieval-Augmented Generation (RAG) API for the Climate Acad
 1. The HTML book is parsed into sections, chunked, and embedded into a vector database (one-time ingestion)
 2. A user sends a question via the frontend or API
 3. Flask dispatches the question to a Celery background worker
-4. The worker embeds the question, finds the most relevant book passages via ChromaDB, and sends them to Ollama (local LLM)
+4. The worker embeds the question, finds the most relevant book passages via ChromaDB, and sends them to AWS Bedrock (Llama 3.1 8B)
 5. The LLM generates a grounded answer citing section numbers
 6. The result is returned to the client via polling
 
@@ -34,7 +34,7 @@ Internet
   │  Redis       message broker + session store │
   │  ChromaDB    persistent vector database     │
   │  MiniLM      local embedding model          │
-  │  Ollama      local LLM (Llama 3.1 8B / A100)│
+  │  Bedrock     managed LLM (Llama 3.1 8B)     │
   └─────────────────────────────────────────────┘
 ```
 
@@ -50,7 +50,7 @@ Internet
 | Session store | Redis | Conversation history per user |
 | Vector database | ChromaDB | Semantic chunk retrieval |
 | Embedding model | all-MiniLM-L6-v2 | Local text → vector (384-dim) |
-| LLM runtime | Ollama — Llama 3.1 8B | Answer generation on GPU |
+| LLM runtime | AWS Bedrock — Llama 3.1 8B | Answer generation via managed inference |
 | Reverse proxy | Nginx | SSL, rate limiting, routing |
 | Book parser | BeautifulSoup4 | HTML → section records → chunks |
 | Package manager | uv | Dependency management + venv |
@@ -67,7 +67,7 @@ semantic_RAG/
 │   ├── tasks.py           Celery task — RAG pipeline orchestration
 │   ├── retriever.py       ChromaDB semantic search
 │   ├── embedder.py        MiniLM embedding wrapper (singleton)
-│   ├── llm.py             Ollama LLM call wrapper
+│   ├── llm.py             LLM call wrapper (Bedrock / Ollama / Grok)
 │   ├── session.py         Redis session management
 │   └── logger.py          Shared structured logging
 ├── deploy/
@@ -200,7 +200,11 @@ No `.env` changes needed. The app calls `localhost:11434` which the tunnel forwa
 | `CHROMA_PATH` | `./chroma_db` | ChromaDB storage path |
 | `CHROMA_COLLECTION` | `climate_academy` | Collection name |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence transformer model |
-| `LLM_PROVIDER` | `auto` | `auto`, `ollama`, or `grok`; `auto` uses Ollama first and falls back to Grok when an API key is configured |
+| `LLM_PROVIDER` | `auto` | `auto`, `ollama`, `bedrock`, or `grok`; `bedrock` uses AWS Bedrock with Llama 3.1 8B |
+| `AWS_REGION` | `us-east-1` | AWS region for Bedrock |
+| `BEDROCK_MODEL_ID` | `meta.llama3-1-8b-instruct-v1:0` | Bedrock model identifier |
+| `BEDROCK_MAX_TOKENS` | `1024` | Maximum tokens generated per response |
+| `BEDROCK_TEMPERATURE` | `0.3` | Sampling temperature for Bedrock |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.1:8b` | Model name (must match `ollama list`) |
 | `GROK_API_KEY` / `XAI_API_KEY` | — | xAI API key for Grok fallback or `LLM_PROVIDER=grok` |

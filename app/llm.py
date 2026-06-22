@@ -78,9 +78,18 @@ def generate(
     messages.append({"role": "user", "content": user_message})
 
     provider = Config.LLM_PROVIDER
-    if provider not in {"auto", "ollama", "grok"}:
+    if provider not in {"auto", "ollama", "bedrock", "grok"}:
         logger.warning(f"Unknown LLM_PROVIDER '{provider}', falling back to auto")
         provider = "auto"
+
+    if provider == "bedrock":
+        return _generate_with_bedrock(messages)
+
+    if provider == "auto" and Config.BEDROCK_MODEL_ID:
+        try:
+            return _generate_with_bedrock(messages)
+        except RuntimeError as e:
+            logger.warning(f"Bedrock unavailable, falling back to Ollama: {e}")
 
     if provider == "grok":
         return _generate_with_grok(messages)
@@ -102,6 +111,45 @@ def generate(
             raise
         logger.warning(f"Ollama unavailable, falling back to Grok: {e}")
         return _generate_with_grok(messages)
+
+
+def _generate_with_bedrock(messages: list[dict]) -> str:
+    import boto3
+
+    logger.info(
+        f"Calling Bedrock model '{Config.BEDROCK_MODEL_ID}' in region {Config.AWS_REGION}"
+    )
+
+    client = boto3.client("bedrock-runtime", region_name=Config.AWS_REGION)
+
+    try:
+        response = client.converse(
+            modelId=Config.BEDROCK_MODEL_ID,
+            messages=messages,
+            inferenceConfig={
+                "temperature": Config.BEDROCK_TEMPERATURE,
+                "maxTokens": Config.BEDROCK_MAX_TOKENS,
+            },
+        )
+        content = response["output"]["message"]["content"]
+        answer = "".join(block.get("text", "") for block in content if isinstance(block, dict)).strip()
+        if not answer:
+            raise RuntimeError("Bedrock returned an empty response.")
+        logger.info(f"Bedrock responded - {len(answer)} chars generated")
+        return answer
+
+    except client.exceptions.AccessDeniedException as e:
+        logger.error(f"Bedrock access denied: {e}")
+        raise RuntimeError("Bedrock access denied. Check IAM permissions and model access.") from e
+    except client.exceptions.ValidationException as e:
+        logger.error(f"Bedrock validation error: {e}")
+        raise RuntimeError(f"Bedrock validation error: {e}") from e
+    except client.exceptions.ThrottlingException as e:
+        logger.error(f"Bedrock throttled: {e}")
+        raise RuntimeError("Bedrock is busy right now. Please try again in a minute.") from e
+    except Exception as e:
+        logger.error(f"Unexpected error calling Bedrock: {e}")
+        raise RuntimeError(f"LLM call failed: {e}") from e
 
 
 def _generate_with_ollama(messages: list[dict], passage_count: int, history_count: int) -> str:
