@@ -94,6 +94,10 @@ def detect_book_fact_intent(query: str) -> str | None:
         return "chapter_count"
 
     chapter_list_patterns = [
+        r"\b(give me|list|show|name|tell me)\b.*\bchapters?\b",
+        r"\b(give me|list|show|name|tell me)\b.*\bchapter names?\b",
+        r"\blist all chapters\b",
+        r"\blist all chapter names\b",
         r"\b(list|show|name|give me) (?:the )?(?:chapters|chapter names)\b",
         r"\bwhat are the chapters\b",
         r"\bchapter list\b",
@@ -203,7 +207,7 @@ def get_book_facts() -> dict:
     return _BOOK_FACTS
 
 
-def build_fact_passages(query: str) -> list[dict]:
+def build_fact_passages(query: str, intent: str | None = None) -> list[dict]:
     q = _normalize_query(query)
     facts = get_book_facts()
     chapters = facts["chapters"]
@@ -211,7 +215,7 @@ def build_fact_passages(query: str) -> list[dict]:
     if not q:
         return []
 
-    intent = detect_book_fact_intent(q)
+    intent = intent or detect_book_fact_intent(q)
 
     if intent == "book_title":
         return [{

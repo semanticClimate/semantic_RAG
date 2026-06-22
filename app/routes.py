@@ -5,6 +5,7 @@ from app.tasks import process_chat
 from app.retriever import retrieve
 from app.book_facts import build_fact_passages
 from app.logger import get_logger
+from app.translation import translate_to_english
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,8 @@ def debug_retrieval():
     if not query:
         return jsonify({"error": "missing_field", "message": "q is required"}), 400
 
-    fact_passages = build_fact_passages(query)
+    english_query = translate_to_english(query, language)
+    fact_passages = build_fact_passages(english_query)
     passages = fact_passages if fact_passages else retrieve(query, language)
 
     return jsonify({
