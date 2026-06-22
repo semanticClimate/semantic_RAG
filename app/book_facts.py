@@ -15,6 +15,32 @@ _WORD_NUMS = {
 
 _BOOK_FACTS: dict | None = None
 
+_DEFAULT_BOOK_METADATA = {
+    "title": "The Climate Academy Student Book",
+    "author": "Matthew Pye",
+    "edition_year": "2025",
+    "license": "CC BY-NC-SA",
+    "climate_academy_started": "2012",
+    "chapters": [
+        {"number": 1, "title": "The Absolute Basics"},
+        {"number": 2, "title": "Mass Extinction Events"},
+        {"number": 3, "title": "Spaceship Earth"},
+        {"number": 4, "title": "Where are we now?"},
+        {"number": 5, "title": "The United Nations?"},
+        {"number": 6, "title": "Who is responsible?"},
+        {"number": 7, "title": "The CUTx Percent Index"},
+        {"number": 8, "title": "Tipping Points – Physical"},
+        {"number": 9, "title": "Paradigm Shifts"},
+        {"number": 10, "title": "Tipping Points – Social"},
+        {"number": 11, "title": "The Psychology of Climate Change (1)"},
+        {"number": 12, "title": "The Psychology of Climate Change (2)"},
+        {"number": 13, "title": "The Paradox of Innovation"},
+        {"number": 14, "title": "Climate Anxiety"},
+        {"number": 15, "title": "The Climate Academy (1) The Piraeus"},
+        {"number": 16, "title": "The Climate Academy (2) The Academy"},
+    ],
+}
+
 
 def _normalize_query(query: str) -> str:
     text = query.lower().strip()
@@ -63,13 +89,32 @@ def detect_book_fact_intent(query: str) -> str | None:
     if any(re.search(pattern, q) for pattern in chapter_list_patterns):
         return "chapter_list"
 
-    intro_patterns = [
-        r"\bwhat is climate change\b",
-        r"\bdefine climate change\b",
-        r"\bclimate change is\b",
+    author_patterns = [
+        r"\bwho wrote (?:the )?(?:book|student book|textbook)\b",
+        r"\bwho is the author\b",
+        r"\bauthor of (?:the )?(?:book|student book|textbook)\b",
     ]
-    if any(re.search(pattern, q) for pattern in intro_patterns):
-        return "intro_definition"
+    if any(re.search(pattern, q) for pattern in author_patterns):
+        return "author"
+
+    edition_patterns = [
+        r"\bwhat year is (?:this )?(?:edition|book)\b",
+        r"\bwhich year was (?:this )?(?:edition|book) published\b",
+        r"\bedition year\b",
+        r"\bpublication year\b",
+    ]
+    if any(re.search(pattern, q) for pattern in edition_patterns):
+        return "edition_year"
+
+    started_patterns = [
+        r"\bwhen was climate academy started\b",
+        r"\bwhen did climate academy start\b",
+        r"\bwhen was the climate academy founded\b",
+        r"\bclimate academy started\b",
+        r"\bfounded in what year\b",
+    ]
+    if any(re.search(pattern, q) for pattern in started_patterns):
+        return "climate_academy_started"
 
     return None
 
@@ -139,28 +184,10 @@ def get_book_facts() -> dict:
 
     html = html_path.read_text(encoding="utf-8", errors="replace")
     soup = BeautifulSoup(html, "html.parser")
-    title = "The Climate Academy Student Book"
-    opening_text = " ".join(
-        tag.get_text(" ", strip=True)
-        for tag in soup.find_all("p")[:20]
-    )
-    if "The Climate Academy was founded" in opening_text:
-        title = "The Climate Academy Student Book"
+    title = _DEFAULT_BOOK_METADATA["title"]
+    chapters = _DEFAULT_BOOK_METADATA["chapters"]
 
-    chapters = _extract_chapters_from_html(html)
-    intro_text = ""
-    intro_anchor = soup.find(string=re.compile(r"Climate change is a reality that is known through science", re.I))
-    if intro_anchor is not None and getattr(intro_anchor, "parent", None) is not None:
-        parts = []
-        for sibling in intro_anchor.parent.find_all_next("p"):
-            text = sibling.get_text(" ", strip=True)
-            if text:
-                parts.append(text)
-            if len(parts) >= 4:
-                break
-        intro_text = " ".join(parts[:4])
-
-    _BOOK_FACTS = {"title": title, "chapters": chapters, "intro_text": intro_text}
+    _BOOK_FACTS = {"title": title, "chapters": chapters}
     return _BOOK_FACTS
 
 
@@ -208,16 +235,37 @@ def build_fact_passages(query: str) -> list[dict]:
             "chapter_title": facts["title"],
         }]
 
-    if intent == "intro_definition":
-        if facts["intro_text"]:
-            return [{
-                "document": facts["intro_text"],
-                "source_type": "book",
-                "section_number": "0.3",
-                "section_title": "Introduction",
-                "distance": 0.0,
-                "chapter_number": 0,
-                "chapter_title": "Introduction",
-            }]
+    if intent == "author":
+        return [{
+            "document": f"The author of the book is {facts['author']}.",
+            "source_type": "book",
+            "section_number": "0.3",
+            "section_title": "Author",
+            "distance": 0.0,
+            "chapter_number": 0,
+            "chapter_title": facts["title"],
+        }]
+
+    if intent == "edition_year":
+        return [{
+            "document": f"The book edition year is {facts['edition_year']}.",
+            "source_type": "book",
+            "section_number": "0.4",
+            "section_title": "Edition Year",
+            "distance": 0.0,
+            "chapter_number": 0,
+            "chapter_title": facts["title"],
+        }]
+
+    if intent == "climate_academy_started":
+        return [{
+            "document": f"The Climate Academy was founded in {facts['climate_academy_started']}.",
+            "source_type": "book",
+            "section_number": "0.5",
+            "section_title": "Climate Academy Founded",
+            "distance": 0.0,
+            "chapter_number": 0,
+            "chapter_title": facts["title"],
+        }]
 
     return []
