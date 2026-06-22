@@ -16,6 +16,90 @@ _WORD_NUMS = {
 _BOOK_FACTS: dict | None = None
 
 
+def _normalize_query(query: str) -> str:
+    text = query.lower().strip()
+    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def detect_book_fact_intent(query: str) -> str | None:
+    """
+    Return a coarse intent label for metadata-style questions.
+    The query should already be translated to English when possible.
+    """
+    q = _normalize_query(query)
+    if not q:
+        return None
+
+    title_patterns = [
+        r"\bwhat(?:'s| is)? the (?:title|name) of (?:the )?(?:book|textbook|student book)\b",
+        r"\bwhat(?:'s| is)? this book called\b",
+        r"\bname of (?:the )?(?:book|textbook|student book)\b",
+        r"\bbook title\b",
+        r"\btextbook title\b",
+    ]
+    if any(re.search(pattern, q) for pattern in title_patterns):
+        return "book_title"
+
+    chapter_count_patterns = [
+        r"\bhow many (?:chapters|sections|parts) (?:are|is) (?:there )?(?:in|in the) (?:the )?(?:book|textbook|student book)\b",
+        r"\bhow many (?:chapters|sections|parts)\b",
+        r"\bnumber of (?:chapters|sections|parts)\b",
+        r"\bchapter count\b",
+        r"\bsection count\b",
+        r"\bcount of (?:chapters|sections|parts)\b",
+    ]
+    if any(re.search(pattern, q) for pattern in chapter_count_patterns):
+        return "chapter_count"
+
+    chapter_list_patterns = [
+        r"\b(list|show|name|give me) (?:the )?(?:chapters|chapter names)\b",
+        r"\bwhat are the chapters\b",
+        r"\bchapter list\b",
+        r"\bchapters list\b",
+        r"\bchapter names\b",
+    ]
+    if any(re.search(pattern, q) for pattern in chapter_list_patterns):
+        return "chapter_list"
+
+    intro_patterns = [
+        r"\bwhat is climate change\b",
+        r"\bdefine climate change\b",
+        r"\bclimate change is\b",
+    ]
+    if any(re.search(pattern, q) for pattern in intro_patterns):
+        return "intro_definition"
+
+    return None
+
+
+def is_chapter_summary_query(query: str) -> int | None:
+    """
+    Return a chapter number if the query asks for a chapter summary.
+    Supports numeric and word-based chapter references.
+    """
+    q = _normalize_query(query)
+    if not q:
+        return None
+
+    if not any(
+        phrase in q
+        for phrase in ["summary of chapter", "summarize chapter", "chapter summary", "summaries of chapter"]
+    ):
+        return None
+
+    match = re.search(
+        r"\bchapter\s+(?P<num>\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen)\b",
+        q,
+    )
+    if not match:
+        return None
+
+    token = match.group("num")
+    return int(token) if token.isdigit() else _WORD_NUMS.get(token)
+
+
 def _extract_chapters_from_html(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     all_tags = [c for c in soup.children if getattr(c, "name", None)]
@@ -81,14 +165,16 @@ def get_book_facts() -> dict:
 
 
 def build_fact_passages(query: str) -> list[dict]:
-    q = query.lower().strip()
+    q = _normalize_query(query)
     facts = get_book_facts()
     chapters = facts["chapters"]
 
     if not q:
         return []
 
-    if any(phrase in q for phrase in ["title of the book", "book title", "what is the title", "name of the book"]):
+    intent = detect_book_fact_intent(q)
+
+    if intent == "book_title":
         return [{
             "document": f"The title of the book is {facts['title']}.",
             "source_type": "book",
@@ -99,7 +185,7 @@ def build_fact_passages(query: str) -> list[dict]:
             "chapter_title": facts["title"],
         }]
 
-    if "how many chapter" in q or "number of chapter" in q or "how many chapters" in q:
+    if intent == "chapter_count":
         return [{
             "document": f"The book has {len(chapters)} chapters.",
             "source_type": "book",
@@ -110,7 +196,7 @@ def build_fact_passages(query: str) -> list[dict]:
             "chapter_title": facts["title"],
         }]
 
-    if any(phrase in q for phrase in ["list those chapters", "list the chapters", "what are the chapters", "chapter list", "name the chapters"]):
+    if intent == "chapter_list":
         chapter_lines = [f"Chapter {chapter['number']}: {chapter['title']}" for chapter in chapters]
         return [{
             "document": "\n".join(chapter_lines),
@@ -122,7 +208,7 @@ def build_fact_passages(query: str) -> list[dict]:
             "chapter_title": facts["title"],
         }]
 
-    if any(phrase in q for phrase in ["what is climate change", "define climate change", "climate change is"]):
+    if intent == "intro_definition":
         if facts["intro_text"]:
             return [{
                 "document": facts["intro_text"],

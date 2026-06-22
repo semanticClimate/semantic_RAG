@@ -3,7 +3,7 @@ import re
 from config import Config
 from app.embedder import embed
 from app.logger import get_logger
-from app.book_facts import build_fact_passages
+from app.book_facts import build_fact_passages, is_chapter_summary_query
 
 logger = get_logger(__name__)
 
@@ -139,7 +139,8 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
         else f"Retrieving chunks for query: '{query}'"
     )
 
-    fact_passages = build_fact_passages(query)
+    english_query = _translate_to_english(query, language)
+    fact_passages = build_fact_passages(english_query)
     if fact_passages:
         logger.info(f"Using book-facts shortcut for query: '{query[:80]}'")
         return fact_passages
@@ -155,21 +156,8 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
         logger.error(f"Embedding failed during retrieval: {e}")
         raise
 
-    chapter_match = re.search(
-        r"chapter\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen)",
-        query.lower(),
-    )
-    if chapter_match and any(
-        phrase in query.lower()
-        for phrase in ["summary of chapter", "summarize chapter", "chapter summary"]
-    ):
-        chapter_token = chapter_match.group(1)
-        chapter_number = int(chapter_token) if chapter_token.isdigit() else {
-            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-            "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-            "fifteen": 15, "sixteen": 16,
-        }[chapter_token]
+    chapter_number = is_chapter_summary_query(english_query)
+    if chapter_number is not None:
         chapter_passages = retrieve_chapter_passages(query_vector, chapter_number)
         if chapter_passages:
             logger.info(f"Using chapter-scoped retrieval for Chapter {chapter_number}")

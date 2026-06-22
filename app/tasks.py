@@ -22,73 +22,77 @@ celery_app.conf.update(
 
 @celery_app.task(bind=True, max_retries=0)
 def process_chat(self, session_id: str, user_message: str, language: str = "English") -> dict:
-    from app.retriever import retrieve
-    from app.llm import generate
-    from app.session import get_history, append_turn
-
-    logger.info(
-        f"Task started - session: {session_id} | language: {language} | message: '{user_message[:60]}'"
-    )
-
-    # Step 1 - Retrieve relevant passages
     try:
-        passages = retrieve(user_message, language)
-    except ValueError as e:
-        logger.error(f"Invalid query in task: {e}")
-        return {"status": "error", "answer": str(e), "sources": []}
-    except RuntimeError as e:
-        logger.error(f"Retrieval failed in task: {e}")
-        return {"status": "error", "answer": str(e), "sources": []}
+        from app.retriever import retrieve
+        from app.llm import generate
+        from app.session import get_history, append_turn
 
-    # Step 2 - Fetch conversation history
-    try:
-        history = get_history(session_id)
-    except RuntimeError as e:
-        logger.warning(f"Could not fetch history for {session_id}: {e} - proceeding without history")
-        history = []  # non-fatal, continue without history
+        logger.info(
+            f"Task started - session: {session_id} | language: {language} | message: '{user_message[:60]}'"
+        )
 
-    # Step 3 - Generate answer
-    try:
-        answer = generate(passages, history, user_message, language)
-    except RuntimeError as e:
-        logger.error(f"LLM generation failed in task: {e}")
-        return {"status": "error", "answer": str(e), "sources": []}
+        # Step 1 - Retrieve relevant passages
+        try:
+            passages = retrieve(user_message, language)
+        except ValueError as e:
+            logger.error(f"Invalid query in task: {e}")
+            return {"status": "error", "answer": str(e), "sources": []}
+        except RuntimeError as e:
+            logger.error(f"Retrieval failed in task: {e}")
+            return {"status": "error", "answer": str(e), "sources": []}
 
-    # Step 4 - Persist turn to session (non-fatal if it fails)
-    try:
-        append_turn(session_id, user_message, answer)
+        # Step 2 - Fetch conversation history
+        try:
+            history = get_history(session_id)
+        except RuntimeError as e:
+            logger.warning(f"Could not fetch history for {session_id}: {e} - proceeding without history")
+            history = []  # non-fatal, continue without history
+
+        # Step 3 - Generate answer
+        try:
+            answer = generate(passages, history, user_message, language)
+        except RuntimeError as e:
+            logger.error(f"LLM generation failed in task: {e}")
+            return {"status": "error", "answer": str(e), "sources": []}
+
+        # Step 4 - Persist turn to session (non-fatal if it fails)
+        try:
+            append_turn(session_id, user_message, answer)
+        except Exception as e:
+            logger.warning(f"Could not save turn to session {session_id}: {e}")
+
+        sources = []
+        seen_keys = set()
+        for p in passages:
+            source_type = p.get("source_type", "book")
+
+            if source_type == "book":
+                # Deduplicate by chapter so the same chapter doesn't appear twice
+                key = f"book__{p.get('chapter_number', '')}_{p.get('section_number', '')}"
+            else:
+                # Deduplicate encyclopedia entries by term/section
+                key = f"enc__{p.get('section_number', '')}"
+
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+            entry = {
+                "source_type":    source_type,
+                "section_number": p["section_number"],
+                "section_title":  p["section_title"],
+            }
+
+            if source_type == "book":
+                entry["chapter_number"] = p.get("chapter_number", "")
+                entry["chapter_title"]  = p.get("chapter_title", "")
+            else:
+                entry["term"] = p.get("term", p["section_title"])
+
+            sources.append(entry)
+
+        logger.info(f"Task complete - session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
+        return {"status": "done", "answer": answer, "sources": sources}
     except Exception as e:
-        logger.warning(f"Could not save turn to session {session_id}: {e}")
-
-    sources = []
-    seen_keys = set()
-    for p in passages:
-        source_type = p.get("source_type", "book")
-
-        if source_type == "book":
-            # Deduplicate by chapter so the same chapter doesn't appear twice
-            key = f"book__{p.get('chapter_number', '')}_{p.get('section_number', '')}"
-        else:
-            # Deduplicate encyclopedia entries by term/section
-            key = f"enc__{p.get('section_number', '')}"
-
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-
-        entry = {
-            "source_type":    source_type,
-            "section_number": p["section_number"],
-            "section_title":  p["section_title"],
-        }
-
-        if source_type == "book":
-            entry["chapter_number"] = p.get("chapter_number", "")
-            entry["chapter_title"]  = p.get("chapter_title", "")
-        else:
-            entry["term"] = p.get("term", p["section_title"])
-
-        sources.append(entry)
-
-    logger.info(f"Task complete - session: {session_id} | answer: {len(answer)} chars | sources: {len(sources)}")
-    return {"status": "done", "answer": answer, "sources": sources}
+        logger.exception(f"Unhandled error in process_chat for session {session_id}: {e}")
+        return {"status": "error", "answer": f"Unhandled task error: {e}", "sources": []}
