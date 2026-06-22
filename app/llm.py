@@ -83,11 +83,11 @@ def generate(
         provider = "auto"
 
     if provider == "bedrock":
-        return _generate_with_bedrock(messages)
+        return _generate_with_bedrock(system_prompt, history, user_message)
 
     if provider == "auto" and Config.BEDROCK_MODEL_ID:
         try:
-            return _generate_with_bedrock(messages)
+            return _generate_with_bedrock(system_prompt, history, user_message)
         except RuntimeError as e:
             logger.warning(f"Bedrock unavailable, falling back to Ollama: {e}")
 
@@ -113,7 +113,7 @@ def generate(
         return _generate_with_grok(messages)
 
 
-def _generate_with_bedrock(messages: list[dict]) -> str:
+def _generate_with_bedrock(system_prompt: str, history: list[dict], user_message: str) -> str:
     import boto3
 
     logger.info(
@@ -123,9 +123,26 @@ def _generate_with_bedrock(messages: list[dict]) -> str:
     client = boto3.client("bedrock-runtime", region_name=Config.AWS_REGION)
 
     try:
+        bedrock_messages = []
+        for message in history:
+            role = message.get("role")
+            content = message.get("content", "")
+            if role not in {"user", "assistant"}:
+                continue
+            bedrock_messages.append({
+                "role": role,
+                "content": [{"text": str(content)}],
+            })
+
+        bedrock_messages.append({
+            "role": "user",
+            "content": [{"text": str(user_message)}],
+        })
+
         response = client.converse(
             modelId=Config.BEDROCK_MODEL_ID,
-            messages=messages,
+            messages=bedrock_messages,
+            system=[{"text": system_prompt}],
             inferenceConfig={
                 "temperature": Config.BEDROCK_TEMPERATURE,
                 "maxTokens": Config.BEDROCK_MAX_TOKENS,
