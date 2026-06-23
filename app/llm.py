@@ -83,7 +83,7 @@ def generate(
         provider = "auto"
 
     if provider == "bedrock":
-        return _generate_with_bedrock(system_prompt, [], user_message)
+        return _generate_with_bedrock(system_prompt,history, user_message)
 
     if provider == "auto" and Config.BEDROCK_MODEL_ID:
         try:
