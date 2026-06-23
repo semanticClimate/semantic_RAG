@@ -27,10 +27,19 @@ def build_system_prompt(
     passages: list[dict],
     language: str = "the same language as the user",
 ) -> str:
-    context_block = "\n\n".join(_format_passage(p) for p in passages)
+    book_passages = [p for p in passages if p.get("source_type") == "book"]
+    enc_passages = [p for p in passages if p.get("source_type") == "encyclopedia"]
 
-    has_book = any(p.get("source_type") == "book" for p in passages)
-    has_enc  = any(p.get("source_type") == "encyclopedia" for p in passages)
+    context_parts = []
+    if book_passages:
+        context_parts.append("=== BOOK PASSAGES ===\n" + "\n\n".join(_format_passage(p) for p in book_passages))
+    if enc_passages:
+        context_parts.append("=== ENCYCLOPEDIA PASSAGES ===\n" + "\n\n".join(_format_passage(p) for p in enc_passages))
+    
+    context_block = "\n\n".join(context_parts)
+
+    has_book = bool(book_passages)
+    has_enc  = bool(enc_passages)
 
     if has_book and has_enc:
         source_desc = "the Climate Academy book and the Climate Academy Encyclopedia"

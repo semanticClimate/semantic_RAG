@@ -456,6 +456,76 @@ def encyclopedia_chunks(text: str, chunk_size: int, overlap: int) -> List[str]:
     return [c for c in chunks if c.strip()]
 
 
+def book_chunks(text: str, chunk_size: int, overlap: int) -> List[str]:
+    """
+    Book-friendly chunking that prefers paragraph boundaries.
+
+    Books in this project are already sectioned before chunking, so the goal
+    here is to preserve the local flow of each section instead of slicing it
+    into rigid word windows. Very short sections stay intact; longer ones are
+    grouped by paragraphs with a small overlap for continuity.
+    """
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    if overlap < 0 or overlap >= chunk_size:
+        raise ValueError("overlap must be in [0, chunk_size)")
+
+    words = text.split()
+    if len(words) <= chunk_size:
+        return [text.strip()] if text.strip() else []
+
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text) if p.strip()]
+    if not paragraphs:
+        return word_chunks(text, chunk_size, overlap)
+
+    chunks: List[str] = []
+    step = chunk_size - overlap
+    cur_parts: List[str] = []
+    cur_count = 0
+
+    def flush_current():
+        nonlocal cur_parts, cur_count
+        if cur_parts:
+            chunk = _normalize_whitespace("\n\n".join(cur_parts))
+            if chunk:
+                chunks.append(chunk)
+
+    for para in paragraphs:
+        para_words = para.split()
+        para_count = len(para_words)
+
+        if para_count > chunk_size:
+            flush_current()
+            chunks.extend(word_chunks(para, chunk_size, overlap))
+            # Start next chunk with overlap from the last word_chunk
+            if overlap > 0 and chunks:
+                last_words = chunks[-1].split()[-overlap:]
+                cur_parts = [" ".join(last_words)] if last_words else []
+                cur_count = len(last_words)
+            else:
+                cur_parts = []
+                cur_count = 0
+            continue
+
+        if cur_count and cur_count + para_count > chunk_size:
+            flush_current()
+            # Start next chunk with overlap from the flushed chunk
+            if overlap > 0 and chunks:
+                last_words = chunks[-1].split()[-overlap:]
+                cur_parts = [" ".join(last_words), para] if last_words else [para]
+                cur_count = len(last_words) + para_count
+            else:
+                cur_parts = [para]
+                cur_count = para_count
+        else:
+            cur_parts.append(para)
+            cur_count += para_count
+
+    flush_current()
+
+    return [c for c in chunks if c.strip()]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  IndexedChunk — final unit stored in ChromaDB
 # ─────────────────────────────────────────────────────────────────────────────
@@ -492,12 +562,16 @@ def records_to_indexed_chunks(
         # Choose chunking strategy
         if chunk_mode == "auto":
             use_enc_chunking = (rec.source_type == "encyclopedia")
+            use_book_chunking = (rec.source_type == "book")
         else:
             use_enc_chunking = (chunk_mode == "encyclopedia")
+            use_book_chunking = False
 
         parts = (
             encyclopedia_chunks(rec.body, chunk_size, chunk_overlap)
             if use_enc_chunking
+            else book_chunks(rec.body, chunk_size, chunk_overlap)
+            if use_book_chunking
             else word_chunks(rec.body, chunk_size, chunk_overlap)
         )
 
