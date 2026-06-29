@@ -21,6 +21,8 @@ METADATA_INTENTS = {
     "author",
     "edition_year",
     "climate_academy_started",
+    "climate_academy_overview",
+    "climate_change_definition",
 }
 
 _METADATA_HINTS = [
@@ -37,6 +39,16 @@ _METADATA_HINTS = [
     "founded",
     "started",
     "climate academy",
+    "what is climate change",
+    "define climate change",
+    "definition of climate change",
+    "explain climate change",
+    "climate change definition",
+    "what is climate academy",
+    "tell me about climate academy",
+    "explain climate academy",
+    "climate academy overview",
+    "what does climate academy do",
 ]
 
 
@@ -59,20 +71,24 @@ Use metadata only for book-level facts such as:
 - chapter list
 - author
 - edition year
-- when Climate Academy started
+- when Climate Academy started or was founded
+- what Climate Academy is, does, or is about (climate_academy_overview)
+- what climate change is, its definition, or explanation (climate_change_definition)
 
-Use retrieval for all other content questions.
+Use retrieval for all other content questions about specific topics inside the book.
 
 Return ONLY valid JSON with this schema:
-{{"route":"metadata|retrieval","intent":"one of book_title, chapter_count, chapter_list, author, edition_year, climate_academy_started, or empty string","confidence":0.0}}
+{{"route":"metadata|retrieval","intent":"one of book_title, chapter_count, chapter_list, author, edition_year, climate_academy_started, climate_academy_overview, climate_change_definition, or empty string","confidence":0.0}}
 
 Rules:
-- If the question asks for chapters, chapter names, chapter list, or similar book metadata, choose metadata and intent chapter_list.
-- If the question asks who wrote the book or the author, choose metadata and intent author.
-- If the question asks when Climate Academy started or was founded, choose metadata and intent climate_academy_started.
-- If the question asks what year the edition/book is, choose metadata and intent edition_year.
-- If the question is asking for a chapter summary, specific chapter content, or about a particular topic/chapter (including climate anxiety), choose retrieval.
-- If the question is about the content of the book, climate science, explanations, summaries, or passages, choose retrieval.
+- If the question asks for chapters, chapter names, chapter list, or similar book metadata → metadata, intent: chapter_list.
+- If the question asks who wrote the book or the author → metadata, intent: author.
+- If the question asks when Climate Academy started or was founded → metadata, intent: climate_academy_started.
+- If the question asks what year the edition/book is → metadata, intent: edition_year.
+- If the question asks what Climate Academy is, what it does, or anything about Climate Academy as an organisation → metadata, intent: climate_academy_overview.
+- If the question asks what climate change is, asks for a definition or explanation of climate change → metadata, intent: climate_change_definition.
+- If the question is asking for a chapter summary, specific chapter content, or a topic discussed inside a chapter → retrieval.
+- If the question is about specific climate science topics beyond the definition (causes, effects, solutions, tipping points, etc.) → retrieval.
 
 User question:
 {query}

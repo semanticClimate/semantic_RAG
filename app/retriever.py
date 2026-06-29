@@ -2,7 +2,12 @@ import chromadb
 from config import Config
 from app.embedder import embed
 from app.logger import get_logger
-from app.book_facts import build_fact_passages, is_chapter_summary_query
+from app.book_facts import (
+    build_fact_passages,
+    is_chapter_summary_query,
+    is_full_book_summary_query,
+    detect_book_fact_intent,
+)
 from app.query_router import route_query, is_metadata_candidate
 from app.translation import translate_to_english
 
@@ -78,20 +83,32 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
     if not query or not query.strip():
         raise ValueError("Query cannot be empty")
 
-    logger.info(f"Retrieving chunks for query: '{query[:80]}...'" if len(query) > 80 else f"Retrieving chunks for query: '{query}'")
+    logger.info(
+        f"Retrieving chunks for query: '{query[:80]}...'"
+        if len(query) > 80
+        else f"Retrieving chunks for query: '{query}'"
+    )
 
     english_query = translate_to_english(query, language)
-    
-    # Check for book summaries and chapter summaries first
-    from app.book_facts import is_full_book_summary_query, is_chapter_summary_query
-    
+
+    # ── 1. Book/chapter summary shortcuts ────────────────────────────────────
     if is_full_book_summary_query(english_query) or is_chapter_summary_query(english_query):
         fact_passages = build_fact_passages(english_query)
         if fact_passages:
             logger.info(f"Using book/chapter summary shortcut for query: '{query[:80]}'")
             return fact_passages
-    
-    # Then check for other metadata
+
+    # ── 2. Direct intent detection — bypasses LLM router ─────────────────────
+    # Handles "what is climate change", "what is climate academy", and all
+    # other metadata intents via fast regex — no network call needed.
+    direct_intent = detect_book_fact_intent(english_query)
+    if direct_intent:
+        fact_passages = build_fact_passages(english_query, intent=direct_intent)
+        if fact_passages:
+            logger.info(f"Direct intent '{direct_intent}' matched for query: '{query[:80]}'")
+            return fact_passages
+
+    # ── 3. LLM router for remaining metadata candidates ───────────────────────
     if is_metadata_candidate(english_query):
         route = route_query(english_query)
         if route.get("route") == "metadata":
@@ -100,6 +117,7 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
                 logger.info(f"Using metadata shortcut for query: '{query[:80]}'")
                 return fact_passages
 
+    # ── 4. Vector retrieval ───────────────────────────────────────────────────
     try:
         query_vector = embed(english_query)
     except RuntimeError as e:
@@ -145,6 +163,8 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
 
     logger.info("Final passages sent to LLM:")
     for i, p in enumerate(passages, start=1):
-        logger.info(f"{i}. {p.get('source_type')} {p.get('distance', 0.0):.3f} {p.get('section_title', '')}")
+        logger.info(
+            f"{i}. {p.get('source_type')} {p.get('distance', 0.0):.3f} {p.get('section_title', '')}"
+        )
 
     return passages
