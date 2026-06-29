@@ -964,21 +964,39 @@ function buildSourcePills(sources) {
 
 function cleanInlineSourceLabels(text) {
   if (!text) return text;
-  // Remove inline source labels like: From [ENCYCLOPEDIA — term] or From [BOOK · ...]
-  // This strips any `From [ ... ]` occurrences which interrupt reading flow.
-  return text.replace(/From\s*\[[^\]]*\]\s*/gi, '');
+  // Remove bracket-style: From [ENCYCLOPEDIA — term] or From [BOOK — ...]
+  text = text.replace(/From\s*\[[^\]]*\]\s*/gi, '');
+  // Remove parenthetical inline citations: (ENCYCLOPEDIA — term, ENCYCLOPEDIA — term2)
+  // Matches any (ENCYCLOPEDIA ...) or (BOOK ...) parenthetical, including comma-separated lists
+  text = text.replace(/\s*\(\s*(?:ENCYCLOPEDIA|BOOK)[^)]*\)\s*/gi, '');
+  // Remove any trailing orphan commas left by the above stripping
+  text = text.replace(/\(\s*,\s*/g, '(').replace(/,\s*\)/g, ')');
+  return text;
+}
+
+const NOT_FOUND_PHRASES = [
+  "i could not find that in the climate academy",
+  "i couldn't find enough information",
+  "could not find that in the climate academy materials",
+];
+
+function isNotFoundAnswer(text) {
+  const lower = (text || '').toLowerCase().trim();
+  return NOT_FOUND_PHRASES.some(p => lower.includes(p));
 }
 
 function addBotBubble(text, container, sources) {
   const d = document.createElement('div');
   d.className = 'msg bot';
+  const cleanedText = cleanInlineSourceLabels(text);
+  const effectiveSources = isNotFoundAnswer(text) ? [] : sources;
   d.innerHTML = `
     <div class="avatar">
       <span class="av-bar"></span><span class="av-bar"></span><span class="av-bar"></span>
     </div>
     <div class="bubble">
-      ${md(cleanInlineSourceLabels(text))}
-      ${buildSourcePills(sources)}
+      ${md(cleanedText)}
+      ${buildSourcePills(effectiveSources)}
     </div>`;
   container.appendChild(d);
 }
@@ -1118,6 +1136,10 @@ async function sendMessage() {
     // If the worker returned no useful answer, replace with a friendly fallback
     if (!answerText || !answerText.trim()) {
       answerText = "I couldn't find enough information to answer this question.";
+      answerSources = [];
+    }
+    // Suppress sources when the LLM returned a "not found" answer
+    if (isNotFoundAnswer(answerText)) {
       answerSources = [];
     }
   } catch (err) {
