@@ -5,7 +5,7 @@ from app.tasks import process_chat
 from app.retriever import retrieve
 from app.book_facts import build_fact_passages
 from app.logger import get_logger
-from app.translation import translate_to_english
+from app.translation import detect_language, translate_to_english
 
 logger = get_logger(__name__)
 
@@ -85,7 +85,8 @@ def chat():
 
     session_id   = data.get("session_id", "").strip()
     user_message = data.get("message",    "").strip()
-    language     = data.get("language", "English").strip()
+    requested_language = (data.get("language", "") or "").strip()
+    language = requested_language or detect_language(user_message)
 
     # Validate session_id
     if not session_id:

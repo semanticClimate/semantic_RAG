@@ -71,6 +71,7 @@ Rules:
 - If the question asks who wrote the book or the author, choose metadata and intent author.
 - If the question asks when Climate Academy started or was founded, choose metadata and intent climate_academy_started.
 - If the question asks what year the edition/book is, choose metadata and intent edition_year.
+- If the question is asking for a chapter summary, specific chapter content, or about a particular topic/chapter (including climate anxiety), choose retrieval.
 - If the question is about the content of the book, climate science, explanations, summaries, or passages, choose retrieval.
 
 User question:

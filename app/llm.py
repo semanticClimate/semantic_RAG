@@ -71,6 +71,8 @@ def generate(
     if not passages:
         return "I could not find that in the Climate Academy materials."
 
+    if not language or not str(language).strip():
+        language = "English"
     system_prompt = build_system_prompt(passages, language)
     messages = [{"role": "system", "content": system_prompt}]
     messages += history

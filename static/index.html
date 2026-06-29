@@ -480,11 +480,34 @@
     #chat { padding: 16px 12px; gap: 14px; }
     .msg { max-width: 100%; }
     .bubble { max-width: min(92vw, 640px); }
-    #topbar { height: auto; min-height: 48px; padding: 10px 12px; }
-    .topbar-right { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-    #topbar-title { max-width: 170px; font-size: 0.9rem; }
+    #topbar {
+      display: grid;
+      grid-template-columns: 1fr;
+      row-gap: 6px;
+      height: auto;
+      min-height: 48px;
+      padding: 10px 12px;
+    }
+    .topbar-left,
+    .topbar-center,
+    .topbar-right {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .topbar-center { justify-content: center; }
+    .topbar-right { justify-content: flex-end; }
+    #topbar-title { max-width: 140px; font-size: 0.9rem; }
     .input-row { padding: 8px 10px; }
     textarea { font-size: 0.86rem; }
+    #downloadBtn {
+      position: static !important;
+      margin-left: auto;
+      display: inline-flex !important;
+      white-space: nowrap;
+    }
   }
 
   /* ══ SEMANTIC LOGO in sidebar ══ */
@@ -622,7 +645,9 @@
 <!-- ════ SIDEBAR ════ -->
 <div id="sidebar">
   <div class="sidebar-header">
-    <img src="/static/semantic_logo.png" alt="#semanticClimate logo" class="semantic-logo" />
+    <a href="https://semanticclimate.github.io/p/en/" target="_blank" rel="noopener noreferrer" title="Visit #semanticClimate" style="display:block;line-height:0;">
+      <img src="/static/semantic_logo.png" alt="#semanticClimate logo" class="semantic-logo" style="cursor:pointer;" />
+    </a>
   </div>
   <div class="sidebar-lang-block">
     <label class="lang-label">LANG</label>
@@ -937,6 +962,13 @@ function buildSourcePills(sources) {
   return `<div class="source-row"><span class="source-label">Sources</span>${pills.join('')}</div>`;
 }
 
+function cleanInlineSourceLabels(text) {
+  if (!text) return text;
+  // Remove inline source labels like: From [ENCYCLOPEDIA — term] or From [BOOK · ...]
+  // This strips any `From [ ... ]` occurrences which interrupt reading flow.
+  return text.replace(/From\s*\[[^\]]*\]\s*/gi, '');
+}
+
 function addBotBubble(text, container, sources) {
   const d = document.createElement('div');
   d.className = 'msg bot';
@@ -945,7 +977,7 @@ function addBotBubble(text, container, sources) {
       <span class="av-bar"></span><span class="av-bar"></span><span class="av-bar"></span>
     </div>
     <div class="bubble">
-      ${md(text)}
+      ${md(cleanInlineSourceLabels(text))}
       ${buildSourcePills(sources)}
     </div>`;
   container.appendChild(d);
@@ -1083,6 +1115,11 @@ async function sendMessage() {
     const result  = await pollResult(task_id);
     answerText    = result.answer  || '';
     answerSources = result.sources || [];
+    // If the worker returned no useful answer, replace with a friendly fallback
+    if (!answerText || !answerText.trim()) {
+      answerText = "I couldn't find enough information to answer this question.";
+      answerSources = [];
+    }
   } catch (err) {
     answerText = `Could not get a response: ${err.message}`;
     // Mark bubble as error style
@@ -1097,7 +1134,7 @@ async function sendMessage() {
   addBotBubble(answerText, chatEl, answerSources);
 
   // Save to in-memory chat history
-  chat.messages.push({ q: query, a: answerText, sources: answerSources });
+  chat.messages.push({ q: query, a: cleanInlineSourceLabels(answerText), sources: answerSources });
   document.getElementById('downloadBtn').style.display = 'inline-block';
 
   // Unlock UI

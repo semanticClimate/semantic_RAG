@@ -81,6 +81,17 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
     logger.info(f"Retrieving chunks for query: '{query[:80]}...'" if len(query) > 80 else f"Retrieving chunks for query: '{query}'")
 
     english_query = translate_to_english(query, language)
+    
+    # Check for book summaries and chapter summaries first
+    from app.book_facts import is_full_book_summary_query, is_chapter_summary_query
+    
+    if is_full_book_summary_query(english_query) or is_chapter_summary_query(english_query):
+        fact_passages = build_fact_passages(english_query)
+        if fact_passages:
+            logger.info(f"Using book/chapter summary shortcut for query: '{query[:80]}'")
+            return fact_passages
+    
+    # Then check for other metadata
     if is_metadata_candidate(english_query):
         route = route_query(english_query)
         if route.get("route") == "metadata":
@@ -119,6 +130,15 @@ def retrieve(query: str, language: str = "English") -> list[dict]:
 
     max_passages = getattr(Config, "MAX_PASSAGES", Config.TOP_K * 2)
     passages = passages[:max_passages]
+
+    # Filter out passages that exceed the distance threshold (lower = more similar)
+    before_filter = len(passages)
+    passages = [p for p in passages if p.get("distance", 999.0) <= Config.DISTANCE_THRESHOLD]
+    if len(passages) < before_filter:
+        logger.info(
+            f"Threshold filter (≤{Config.DISTANCE_THRESHOLD}): "
+            f"{before_filter - len(passages)} passage(s) dropped, {len(passages)} kept"
+        )
 
     if not passages:
         return []

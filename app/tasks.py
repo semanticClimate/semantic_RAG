@@ -2,6 +2,7 @@ import redis as redis_lib
 from celery import Celery
 from config import Config
 from app.logger import get_logger
+from app.translation import detect_language
 
 logger = get_logger(__name__)
 
@@ -23,6 +24,10 @@ celery_app.conf.update(
 @celery_app.task(bind=True, max_retries=0)
 def process_chat(self, session_id: str, user_message: str, language: str = "English") -> dict:
     try:
+        if not language or not str(language).strip():
+            language = detect_language(user_message)
+        else:
+            language = str(language).strip()
         from app.retriever import retrieve
         from app.llm import generate
         from app.session import get_history, append_turn

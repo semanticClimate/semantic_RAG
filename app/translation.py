@@ -1,9 +1,37 @@
+import re
 import httpx
 
 from config import Config
 from app.logger import get_logger
 
 logger = get_logger(__name__)
+
+_LANGUAGE_HINTS = {
+    "English": [r"\b(the|is|what|how|why|when|where|who|do|can|could|would|should)\b"],
+    "Hindi": [r"\b(क्या|कैसे|क्यों|कब|कहाँ|किसने|क्या है|कृपया|मुझे|समझाइए)\b"],
+    "Spanish": [r"\b(qué|cómo|por qué|cuándo|dónde|quién|puede|puedes|explique|defina|resúmeme)\b"],
+    "French": [r"\b(quoi|comment|pourquoi|quand|où|qui|peut|peux|explique|définis|définir|résume|résumer|l'académie|l'academie|est-ce)\b"],
+    "Arabic": [r"\b(ما|كيف|لماذا|متى|أين|من|هل|وضح|عرف|لخص)\b"],
+    "German": [r"\b(was|wie|warum|wann|wo|wer|kann|erkläre|definiere|zusammenfassen)\b"],
+    "Portuguese": [r"\b(o que|como|por que|quando|onde|quem|pode|explique|defina|resuma)\b"],
+    "Mandarin": [r"\b(什么|怎么|为什么|什么时候|在哪里|谁|能|请解释|定义|总结)\b"],
+}
+
+
+def _looks_like_hindi(text: str) -> bool:
+    return any("\u0900" <= ch <= "\u097f" for ch in text)
+
+
+def detect_language(query: str) -> str:
+    if not query or not query.strip():
+        return "English"
+    text = query.strip()
+    for language, patterns in _LANGUAGE_HINTS.items():
+        if any(re.search(pattern, text, re.IGNORECASE) for pattern in patterns):
+            return language
+    if _looks_like_hindi(text):
+        return "Hindi"
+    return "English"
 
 
 def translate_to_english(query: str, language: str) -> str:
