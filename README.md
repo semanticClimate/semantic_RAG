@@ -269,3 +269,31 @@ See [`deploy/DEPLOY.md`](deploy/DEPLOY.md) for the complete step-by-step server 
 | Vector DB scale | ChromaDB is single-node — suitable for ≤50 concurrent users |
 | SSH tunnel | Remote Ollama requires an active SSH tunnel — automated via systemd in production |
 | Chunk size | MiniLM max input is ~256 tokens ≈ 180 words — `CHUNK_SIZE=150` stays safely within limit |
+
+## Contributors:
+Renu Kumari : Program Manager
+
+Udita Agarwal: AI/RAG Engineer and Technical Program Manager
+
+Ali Mehdi Naqvi : Backend Developer
+
+Aleena Harold Peter : Frontend Developer
+
+Saarthak Patwal : Documentation and Chatbot testing
+
+Parth Kadam, Uddhav Mishra : Video Content Creation
+
+Samyukta Nair, Bui Doan Khanh Linh and Misha Ali: Chatbot Testing
+
+
+## Acknowledgements
+
+We gratefully acknowledge the guidance, support, and contributions of the following individuals and organizations:
+
+Prof. Peter Murray-Rust for his vision, guidance, and continuous support throughout the project.
+
+Dr. Gitanjali Yadav for her valuable guidance, feedback, and support.
+
+The Climate Academy for providing the educational materials that form the foundation of the chatbot's knowledge base.
+
+Open Knowledge Foundation (OKFN), AI Learning Labs for their collaboration and support.
